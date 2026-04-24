@@ -10,7 +10,8 @@ logsRoutes.get('/:date', (req, res) => {
   const { userId } = req.user
   const { date } = req.params
   const foodEntries = db.prepare(`
-    SELECT id, food_name as name, calories, protein, carbs, fat, emoji, category, logged_at as time
+    SELECT id, food_name as name, calories, protein, carbs, fat, emoji, category,
+           replace(logged_at, ' ', 'T') || 'Z' as time
     FROM food_entries WHERE user_id=? AND date=? ORDER BY logged_at ASC
   `).all(userId, date)
   const water = db.prepare('SELECT glasses FROM water_logs WHERE user_id=? AND date=?').get(userId, date)
@@ -41,7 +42,8 @@ logsRoutes.post('/food', (req, res) => {
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).run(userId, date, food_name, calories, protein ?? 0, carbs ?? 0, fat ?? 0, emoji ?? '🍽️', category ?? 'Other')
   const entry = db.prepare(`
-    SELECT id, food_name as name, calories, protein, carbs, fat, emoji, category, logged_at as time
+    SELECT id, food_name as name, calories, protein, carbs, fat, emoji, category,
+           replace(logged_at, ' ', 'T') || 'Z' as time
     FROM food_entries WHERE id=?
   `).get(result.lastInsertRowid)
   res.status(201).json(entry)

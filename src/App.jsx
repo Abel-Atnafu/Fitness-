@@ -1,5 +1,6 @@
 import { HashRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
-import { AnimatePresence } from 'framer-motion'
+import { AnimatePresence, motion } from 'framer-motion'
+import { AlertCircle, X } from 'lucide-react'
 import { AppProvider, useApp } from './context/AppContext'
 import { Navbar } from './components/layout/Navbar'
 import { BottomNav } from './components/layout/BottomNav'
@@ -28,7 +29,7 @@ function AnimatedRoutes() {
 }
 
 function AppShell() {
-  const { token, loading } = useApp()
+  const { token, loading, error, setError } = useApp()
 
   if (loading) return <LoadingScreen />
   if (!token) return <Login />
@@ -45,6 +46,25 @@ function AppShell() {
           style={{ background: 'radial-gradient(circle, rgba(218,18,26,0.05) 0%, transparent 70%)' }} />
       </div>
       <Navbar />
+      {/* Global error banner */}
+      <AnimatePresence>
+        {error && (
+          <motion.div
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            className="fixed top-14 left-0 right-0 z-40 px-4 pt-2 max-w-[448px] mx-auto">
+            <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm text-red-300"
+              style={{ background: 'rgba(248,113,113,0.12)', border: '1px solid rgba(248,113,113,0.25)', backdropFilter: 'blur(8px)' }}>
+              <AlertCircle size={14} className="flex-shrink-0" />
+              <span className="flex-1 text-xs">{error}</span>
+              <button onClick={() => setError(null)} className="text-red-400/60 hover:text-red-300 transition-colors">
+                <X size={14} />
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
       <main className="relative z-10 pt-14 pb-20 px-4 max-w-[448px] mx-auto">
         <AnimatedRoutes />
       </main>

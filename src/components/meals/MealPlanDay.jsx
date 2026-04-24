@@ -6,8 +6,16 @@ import { useApp } from '../../context/AppContext'
 const todayIndex = new Date().getDay() === 0 ? 6 : new Date().getDay() - 1
 
 export function MealPlanDay() {
-  const { activeMealPlanDay, setActiveMealPlanDay } = useApp()
+  const { activeMealPlanDay, setActiveMealPlanDay, mealSwapIndices } = useApp()
   const plan = MEAL_PLANS[activeMealPlanDay]
+
+  // Cycles through all 7 days' same slot when swapped
+  function getSwappedMeal(slot) {
+    const key = `${activeMealPlanDay}-${slot}`
+    const swapCount = mealSwapIndices[key] ?? 0
+    const sourceDay = (activeMealPlanDay + swapCount) % 7
+    return MEAL_PLANS[sourceDay].meals[slot]
+  }
 
   return (
     <div>
@@ -51,7 +59,7 @@ export function MealPlanDay() {
       {/* Cards */}
       <div className="flex flex-col gap-3">
         {['breakfast', 'lunch', 'dinner'].map(slot => (
-          <MealCard key={slot} meal={plan.meals[slot]} slot={slot} dayIndex={activeMealPlanDay} />
+          <MealCard key={slot} meal={getSwappedMeal(slot)} slot={slot} dayIndex={activeMealPlanDay} />
         ))}
       </div>
     </div>

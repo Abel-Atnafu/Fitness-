@@ -82,7 +82,7 @@ export default function Login() {
           initial={{ opacity: 0, y: 24 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
-          className="rounded-3xl p-6"
+          className="rounded-3xl p-6 relative"
           style={{
             background: 'linear-gradient(135deg, rgba(255,255,255,0.07), rgba(255,255,255,0.02))',
             border: '1px solid rgba(255,255,255,0.1)',

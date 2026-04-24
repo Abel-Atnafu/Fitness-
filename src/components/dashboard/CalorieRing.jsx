@@ -4,7 +4,7 @@ import { AnimatedNumber } from '../ui/AnimatedNumber'
 import { useApp } from '../../context/AppContext'
 
 export function CalorieRing() {
-  const { todayCalories, profile } = useApp()
+  const { todayCalories, todayLog, profile } = useApp()
   const target = profile?.dailyCalorieTarget ?? 1900
   const ratio = Math.min(todayCalories / target, 1)
   const remaining = Math.max(target - todayCalories, 0)
@@ -12,9 +12,10 @@ export function CalorieRing() {
 
   const ringColor = over ? '#f87171' : ratio > 0.88 ? '#f59e0b' : '#84cc16'
 
-  const totalProtein = 0
-  const totalCarbs = 0
-  const totalFat = 0
+  const entries = todayLog.foodEntries ?? []
+  const totalProtein = Math.round(entries.reduce((s, e) => s + (e.protein ?? 0), 0))
+  const totalCarbs = Math.round(entries.reduce((s, e) => s + (e.carbs ?? 0), 0))
+  const totalFat = Math.round(entries.reduce((s, e) => s + (e.fat ?? 0), 0))
 
   return (
     <div className="flex flex-col items-center gap-5">
@@ -39,9 +40,9 @@ export function CalorieRing() {
       {/* Macro pills */}
       <div className="flex gap-2 w-full">
         {[
-          { label: 'Protein', value: Math.round(todayCalories * 0.3 / 4), unit: 'g', color: '#84cc16', bg: 'rgba(132,204,22,0.1)' },
-          { label: 'Carbs', value: Math.round(todayCalories * 0.45 / 4), unit: 'g', color: '#fbbf24', bg: 'rgba(251,191,36,0.1)' },
-          { label: 'Fat', value: Math.round(todayCalories * 0.25 / 9), unit: 'g', color: '#f87171', bg: 'rgba(248,113,113,0.1)' },
+          { label: 'Protein', value: totalProtein, unit: 'g', color: '#84cc16', bg: 'rgba(132,204,22,0.1)' },
+          { label: 'Carbs', value: totalCarbs, unit: 'g', color: '#fbbf24', bg: 'rgba(251,191,36,0.1)' },
+          { label: 'Fat', value: totalFat, unit: 'g', color: '#f87171', bg: 'rgba(248,113,113,0.1)' },
         ].map((m, i) => (
           <motion.div
             key={m.label}

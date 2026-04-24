@@ -115,6 +115,16 @@ export function AppProvider({ children }) {
   async function logFood(food) {
     const optimistic = { id: `opt-${Date.now()}`, ...food, time: new Date().toISOString() }
     setTodayLog(prev => ({ ...prev, foodEntries: [...prev.foodEntries, optimistic] }))
+    // Keep recentHistory in sync so streak recalculates correctly within the session
+    setRecentHistory(prev => {
+      const existing = prev.find(h => h.date === todayKey)
+      if (existing) {
+        return prev.map(h => h.date === todayKey
+          ? { ...h, totalCalories: h.totalCalories + (food.calories ?? 0) }
+          : h)
+      }
+      return [...prev, { date: todayKey, totalCalories: food.calories ?? 0 }]
+    })
     try {
       const entry = await api.post('/api/logs/food', {
         date: todayKey,
@@ -132,6 +142,9 @@ export function AppProvider({ children }) {
       }))
     } catch {
       setTodayLog(prev => ({ ...prev, foodEntries: prev.foodEntries.filter(e => e.id !== optimistic.id) }))
+      setRecentHistory(prev => prev.map(h => h.date === todayKey
+        ? { ...h, totalCalories: Math.max(0, h.totalCalories - (food.calories ?? 0)) }
+        : h))
     }
   }
 
@@ -149,26 +162,34 @@ export function AppProvider({ children }) {
     catch { setTodayLog(prev => ({ ...prev, mealsEaten: { ...prev.mealsEaten, [slot]: !eaten } })) }
   }
 
-  async function logWater() {
-    const glasses = Math.min((todayLog.waterGlasses ?? 0) + 1, 12)
-    setTodayLog(prev => ({ ...prev, waterGlasses: glasses }))
-    try { await api.put('/api/logs/water', { date: todayKey, glasses }) } catch {}
+  async function logWater(delta = 1) {
+    setTodayLog(prev => {
+      const glasses = Math.min(Math.max((prev.waterGlasses ?? 0) + delta, 0), 12)
+      api.put('/api/logs/water', { date: todayKey, glasses }).catch(() => {})
+      return { ...prev, waterGlasses: glasses }
+    })
   }
 
   async function logWeight(weight_kg) {
-    setWeightEntries(prev => [...prev.filter(e => e.date !== todayKey), { date: todayKey, weight: weight_kg }].sort((a, b) => a.date.localeCompare(b.date)))
-    setProfile(prev => ({ ...prev, currentWeightKg: weight_kg }))
-    try {
-      await api.post('/api/weight', { date: todayKey, weight_kg })
-      const result = await api.put('/api/profile', {
-        name: profile?.name,
-        age: profile?.age,
-        height_cm: profile?.heightCm,
-        current_weight_kg: weight_kg,
-        goal_weight_kg: profile?.goalWeightKg,
-      })
-      setProfile(prev => ({ ...prev, dailyCalorieTarget: result.daily_calorie_target }))
-    } catch {}
+    setWeightEntries(prev =>
+      [...prev.filter(e => e.date !== todayKey), { date: todayKey, weight: weight_kg }]
+        .sort((a, b) => a.date.localeCompare(b.date))
+    )
+    setProfile(prev => {
+      const updated = { ...prev, currentWeightKg: weight_kg }
+      // Use functional form so we always have fresh profile values
+      api.post('/api/weight', { date: todayKey, weight_kg })
+        .then(() => api.put('/api/profile', {
+          name: updated.name,
+          age: updated.age,
+          height_cm: updated.heightCm,
+          current_weight_kg: weight_kg,
+          goal_weight_kg: updated.goalWeightKg,
+        }))
+        .then(result => setProfile(p => ({ ...p, dailyCalorieTarget: result.daily_calorie_target })))
+        .catch(() => {})
+      return updated
+    })
   }
 
   async function updateProfile(data) {
@@ -212,6 +233,7 @@ export function AppProvider({ children }) {
       token, user, login, register, logout, authLoading,
       profile, todayLog, weightEntries, recentHistory, currentStreak,
       logFood, deleteFood, toggleMealEaten, logWater, logWeight, updateProfile, resetData,
+      decrementWater: () => logWater(-1),
       activeMealPlanDay, setActiveMealPlanDay, mealSwapIndices, swapMeal,
       loading, error, setError, todayKey,
       todayCalories, calorieDeficit, bmi, mealsCompletedToday,
