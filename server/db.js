@@ -37,7 +37,7 @@ db.exec(`
     fat REAL DEFAULT 0,
     emoji TEXT DEFAULT '🍽️',
     category TEXT DEFAULT 'Other',
-    logged_at TEXT DEFAULT (datetime('now')),
+    logged_at TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
   );
 

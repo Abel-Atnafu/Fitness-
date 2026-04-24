@@ -47,6 +47,16 @@ export const FOOD_DATABASE = [
   { id: 'f044', name: 'Orange Juice (250ml)', category: 'Drink', calories: 110, protein: 2, carbs: 26, fat: 0.5, emoji: '🍊' },
   { id: 'f045', name: 'Whole Milk (250ml)', category: 'Drink', calories: 150, protein: 8, carbs: 12, fat: 8, emoji: '🥛' },
   { id: 'f046', name: 'Protein Shake (1 scoop)', category: 'Supplement', calories: 120, protein: 24, carbs: 3, fat: 2, emoji: '🥤' },
+  // ─── New items ──────────────────────────────────────────────────────────────
+  { id: 'f047', name: 'Sambusa (3 pieces)', category: 'Ethiopian', calories: 380, protein: 12, carbs: 44, fat: 18, emoji: '🥟' },
+  { id: 'f048', name: 'Dulet (1 serving)', category: 'Ethiopian', calories: 420, protein: 38, carbs: 12, fat: 26, emoji: '🫕' },
+  { id: 'f049', name: 'Misir Firfir (1 serving)', category: 'Ethiopian', calories: 500, protein: 18, carbs: 76, fat: 12, emoji: '🫘' },
+  { id: 'f050', name: 'Doro Tibs (1 serving)', category: 'Ethiopian', calories: 360, protein: 40, carbs: 6, fat: 18, emoji: '🍗' },
+  { id: 'f051', name: 'Protein Smoothie (milk+banana+PB)', category: 'Foreign', calories: 340, protein: 16, carbs: 42, fat: 12, emoji: '🥤' },
+  { id: 'f052', name: 'Pizza (2 slices, beef)', category: 'Foreign', calories: 620, protein: 28, carbs: 68, fat: 26, emoji: '🍕' },
+  { id: 'f053', name: 'Avocado Toast (1 slice + half avo)', category: 'Foreign', calories: 200, protein: 5, carbs: 18, fat: 13, emoji: '🥑' },
+  { id: 'f054', name: 'Grilled Fish (tilapia, 200g)', category: 'Foreign', calories: 220, protein: 42, carbs: 0, fat: 6, emoji: '🐟' },
+  { id: 'f055', name: 'Chicken Salad with Avocado', category: 'Foreign', calories: 420, protein: 38, carbs: 14, fat: 22, emoji: '🥗' },
 ]
 
 export const FOOD_CATEGORIES = ['All', 'Ethiopian', 'Foreign', 'Drink', 'Supplement']

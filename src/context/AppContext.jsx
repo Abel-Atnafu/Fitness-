@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect } from 'react'
+import { createContext, useContext, useState, useEffect, useRef } from 'react'
 import { format } from 'date-fns'
 import { api } from '../api/client.js'
 
@@ -32,6 +32,19 @@ export function AppProvider({ children }) {
   const [loading, setLoading] = useState(true)
   const [authLoading, setAuthLoading] = useState(false)
   const [error, setError] = useState(null)
+
+  // Bug 8 fix: always-current profile ref for logWeight
+  const profileRef = useRef(profile)
+  useEffect(() => { profileRef.current = profile }, [profile])
+
+  // Bug 7 fix: debounced water sync to avoid race on rapid taps
+  const waterSyncTimer = useRef(null)
+  function syncWater(glasses) {
+    clearTimeout(waterSyncTimer.current)
+    waterSyncTimer.current = setTimeout(() => {
+      api.put('/api/logs/water', { date: todayKey, glasses }).catch(() => {})
+    }, 400)
+  }
 
   useEffect(() => {
     if (!token) { setLoading(false); return }
@@ -113,7 +126,9 @@ export function AppProvider({ children }) {
   }
 
   async function logFood(food) {
-    const optimistic = { id: `opt-${Date.now()}`, ...food, time: new Date().toISOString() }
+    // Bug 4 fix: use crypto.randomUUID() to avoid rare same-ms collisions
+    const optimisticId = crypto.randomUUID()
+    const optimistic = { id: optimisticId, ...food, time: new Date().toISOString() }
     setTodayLog(prev => ({ ...prev, foodEntries: [...prev.foodEntries, optimistic] }))
     try {
       const entry = await api.post('/api/logs/food', {
@@ -128,47 +143,93 @@ export function AppProvider({ children }) {
       })
       setTodayLog(prev => ({
         ...prev,
-        foodEntries: prev.foodEntries.map(e => e.id === optimistic.id ? entry : e),
+        foodEntries: prev.foodEntries.map(e => e.id === optimisticId ? entry : e),
       }))
-    } catch {
-      setTodayLog(prev => ({ ...prev, foodEntries: prev.foodEntries.filter(e => e.id !== optimistic.id) }))
+      // Bug 6 fix: update recentHistory for today and recalculate streak
+      setRecentHistory(prev => {
+        const existing = prev.find(h => h.date === todayKey)
+        const newCalories = (existing?.totalCalories ?? 0) + (entry.calories ?? 0)
+        const updated = existing
+          ? prev.map(h => h.date === todayKey ? { ...h, totalCalories: newCalories } : h)
+          : [...prev, { date: todayKey, totalCalories: newCalories }]
+        setCurrentStreak(calcStreak(updated))
+        return updated
+      })
+    } catch (err) {
+      setTodayLog(prev => ({ ...prev, foodEntries: prev.foodEntries.filter(e => e.id !== optimisticId) }))
+      setError(err.message || 'Failed to log food')
     }
   }
 
   async function deleteFood(id) {
     const snapshot = todayLog.foodEntries
+    const removed = snapshot.find(e => e.id === id)
     setTodayLog(prev => ({ ...prev, foodEntries: prev.foodEntries.filter(e => e.id !== id) }))
-    try { await api.delete(`/api/logs/food/${id}`) }
-    catch { setTodayLog(prev => ({ ...prev, foodEntries: snapshot })) }
+    try {
+      await api.delete(`/api/logs/food/${id}`)
+      // Update recentHistory for today when deleting food
+      if (removed) {
+        setRecentHistory(prev => {
+          const updated = prev.map(h =>
+            h.date === todayKey
+              ? { ...h, totalCalories: Math.max(0, h.totalCalories - (removed.calories ?? 0)) }
+              : h
+          )
+          setCurrentStreak(calcStreak(updated))
+          return updated
+        })
+      }
+    } catch (err) {
+      setTodayLog(prev => ({ ...prev, foodEntries: snapshot }))
+      setError(err.message || 'Failed to delete food entry')
+    }
   }
 
   async function toggleMealEaten(slot) {
     const eaten = !todayLog.mealsEaten?.[slot]
     setTodayLog(prev => ({ ...prev, mealsEaten: { ...prev.mealsEaten, [slot]: eaten } }))
-    try { await api.put('/api/logs/meal', { date: todayKey, slot, eaten }) }
-    catch { setTodayLog(prev => ({ ...prev, mealsEaten: { ...prev.mealsEaten, [slot]: !eaten } })) }
+    try {
+      await api.put('/api/logs/meal', { date: todayKey, slot, eaten })
+    } catch (err) {
+      setTodayLog(prev => ({ ...prev, mealsEaten: { ...prev.mealsEaten, [slot]: !eaten } }))
+      setError(err.message || 'Failed to update meal')
+    }
   }
 
+  // Bug 7 fix: logWater increments, decrementWater decrements, both debounce the API call
   async function logWater() {
     const glasses = Math.min((todayLog.waterGlasses ?? 0) + 1, 12)
     setTodayLog(prev => ({ ...prev, waterGlasses: glasses }))
-    try { await api.put('/api/logs/water', { date: todayKey, glasses }) } catch {}
+    syncWater(glasses)
+  }
+
+  async function decrementWater() {
+    const glasses = Math.max((todayLog.waterGlasses ?? 0) - 1, 0)
+    setTodayLog(prev => ({ ...prev, waterGlasses: glasses }))
+    syncWater(glasses)
   }
 
   async function logWeight(weight_kg) {
-    setWeightEntries(prev => [...prev.filter(e => e.date !== todayKey), { date: todayKey, weight: weight_kg }].sort((a, b) => a.date.localeCompare(b.date)))
+    setWeightEntries(prev =>
+      [...prev.filter(e => e.date !== todayKey), { date: todayKey, weight: weight_kg }]
+        .sort((a, b) => a.date.localeCompare(b.date))
+    )
     setProfile(prev => ({ ...prev, currentWeightKg: weight_kg }))
     try {
       await api.post('/api/weight', { date: todayKey, weight_kg })
+      // Bug 8 fix: read from profileRef to avoid stale closure
+      const p = profileRef.current
       const result = await api.put('/api/profile', {
-        name: profile?.name,
-        age: profile?.age,
-        height_cm: profile?.heightCm,
+        name: p?.name,
+        age: p?.age,
+        height_cm: p?.heightCm,
         current_weight_kg: weight_kg,
-        goal_weight_kg: profile?.goalWeightKg,
+        goal_weight_kg: p?.goalWeightKg,
       })
       setProfile(prev => ({ ...prev, dailyCalorieTarget: result.daily_calorie_target }))
-    } catch {}
+    } catch (err) {
+      setError(err.message || 'Failed to log weight')
+    }
   }
 
   async function updateProfile(data) {
@@ -194,7 +255,9 @@ export function AppProvider({ children }) {
       setWeightEntries([])
       setRecentHistory([])
       setCurrentStreak(0)
-    } catch { setError('Reset failed') }
+    } catch (err) {
+      setError('Reset failed')
+    }
   }
 
   function swapMeal(day, slot) {
@@ -211,7 +274,8 @@ export function AppProvider({ children }) {
     <AppContext.Provider value={{
       token, user, login, register, logout, authLoading,
       profile, todayLog, weightEntries, recentHistory, currentStreak,
-      logFood, deleteFood, toggleMealEaten, logWater, logWeight, updateProfile, resetData,
+      logFood, deleteFood, toggleMealEaten, logWater, decrementWater, logWeight,
+      updateProfile, resetData,
       activeMealPlanDay, setActiveMealPlanDay, mealSwapIndices, swapMeal,
       loading, error, setError, todayKey,
       todayCalories, calorieDeficit, bmi, mealsCompletedToday,

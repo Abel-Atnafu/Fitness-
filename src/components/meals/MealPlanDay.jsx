@@ -6,7 +6,7 @@ import { useApp } from '../../context/AppContext'
 const todayIndex = new Date().getDay() === 0 ? 6 : new Date().getDay() - 1
 
 export function MealPlanDay() {
-  const { activeMealPlanDay, setActiveMealPlanDay } = useApp()
+  const { activeMealPlanDay, setActiveMealPlanDay, mealSwapIndices } = useApp()
   const plan = MEAL_PLANS[activeMealPlanDay]
 
   return (
@@ -48,11 +48,18 @@ export function MealPlanDay() {
         </div>
       </div>
 
-      {/* Cards */}
+      {/* Cards — Bug 2 fix: derive displayed meal from alternates pool via swap index */}
       <div className="flex flex-col gap-3">
-        {['breakfast', 'lunch', 'dinner'].map(slot => (
-          <MealCard key={slot} meal={plan.meals[slot]} slot={slot} dayIndex={activeMealPlanDay} />
-        ))}
+        {['breakfast', 'lunch', 'dinner'].map(slot => {
+          const primary = plan.meals[slot]
+          const pool = [primary, ...(primary.alternates ?? [])]
+          const swapKey = `${activeMealPlanDay}-${slot}`
+          const swapIdx = mealSwapIndices[swapKey] ?? 0
+          const { alternates: _dropped, ...meal } = pool[swapIdx % pool.length]
+          return (
+            <MealCard key={slot} meal={meal} slot={slot} dayIndex={activeMealPlanDay} poolSize={pool.length} />
+          )
+        })}
       </div>
     </div>
   )

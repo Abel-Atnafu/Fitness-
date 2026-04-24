@@ -4,6 +4,7 @@ import { AppProvider, useApp } from './context/AppContext'
 import { Navbar } from './components/layout/Navbar'
 import { BottomNav } from './components/layout/BottomNav'
 import { LoadingScreen } from './components/ui/Spinner'
+import { ErrorBanner } from './components/ui/ErrorBanner'
 import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
 import MealPlan from './pages/MealPlan'
@@ -44,6 +45,7 @@ function AppShell() {
         <div className="absolute bottom-32 right-8 w-44 h-44 rounded-full"
           style={{ background: 'radial-gradient(circle, rgba(218,18,26,0.05) 0%, transparent 70%)' }} />
       </div>
+      <ErrorBanner />
       <Navbar />
       <main className="relative z-10 pt-14 pb-20 px-4 max-w-[448px] mx-auto">
         <AnimatedRoutes />
