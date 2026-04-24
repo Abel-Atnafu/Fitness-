@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Mail, Lock, User, Eye, EyeOff, AlertCircle } from 'lucide-react'
 import { useApp } from '../context/AppContext'
+import { Spinner } from '../components/ui/Spinner'
 
 function Input({ icon: Icon, type, placeholder, value, onChange, rightIcon, onRightClick }) {
   return (
@@ -138,18 +139,30 @@ export default function Login() {
                   animate={{ opacity: 1, height: 'auto' }}
                   exit={{ opacity: 0, height: 0 }}
                   className="overflow-hidden">
-                  <Input icon={User} type="text" placeholder="Your name" value={name} onChange={setName} />
+                  <Input
+                    icon={User}
+                    type="text"
+                    placeholder="Your name"
+                    value={name}
+                    onChange={v => { setName(v); setError(null) }}
+                  />
                 </motion.div>
               )}
             </AnimatePresence>
 
-            <Input icon={Mail} type="email" placeholder="Email address" value={email} onChange={setEmail} />
+            <Input
+              icon={Mail}
+              type="email"
+              placeholder="Email address"
+              value={email}
+              onChange={v => { setEmail(v); setError(null) }}
+            />
             <Input
               icon={Lock}
               type={showPw ? 'text' : 'password'}
               placeholder="Password"
               value={password}
-              onChange={setPassword}
+              onChange={v => { setPassword(v); setError(null) }}
               rightIcon={showPw ? <EyeOff size={15} /> : <Eye size={15} />}
               onRightClick={() => setShowPw(s => !s)}
             />
@@ -160,7 +173,13 @@ export default function Login() {
               disabled={authLoading}
               className="mt-2 py-4 rounded-2xl font-display font-bold text-base text-navy-950 transition-all disabled:opacity-60"
               style={{ background: 'linear-gradient(135deg, #d97706, #fbbf24)', boxShadow: '0 0 20px rgba(251,191,36,0.25)' }}>
-              {authLoading ? '...' : tab === 'login' ? 'Sign In' : 'Create Account'}
+              {authLoading
+                ? <span className="flex items-center justify-center gap-2">
+                    <Spinner size={16} />
+                    {tab === 'login' ? 'Signing in…' : 'Creating…'}
+                  </span>
+                : tab === 'login' ? 'Sign In' : 'Create Account'
+              }
             </motion.button>
           </form>
 
