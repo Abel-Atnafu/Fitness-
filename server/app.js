@@ -9,10 +9,20 @@ import { weightRoutes } from './routes/weight.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const app = express()
-const isProd = process.env.NODE_ENV === 'production'
 
-app.use(cors({ origin: isProd ? false : 'http://localhost:5173', credentials: true }))
+// VERCEL env var is automatically set to "1" by Vercel — do NOT rely on NODE_ENV
+const isVercel = !!process.env.VERCEL
+
+// Same-origin on Vercel needs no CORS headers. Allow localhost in dev.
+app.use(cors({
+  origin: isVercel ? false : 'http://localhost:5173',
+  credentials: true,
+}))
+
 app.use(express.json())
+
+// Serialize BigInt values from libsql as plain numbers
+app.set('json replacer', (_, v) => (typeof v === 'bigint' ? Number(v) : v))
 
 app.use('/api/auth', authRoutes)
 app.use('/api/profile', profileRoutes)
@@ -21,8 +31,8 @@ app.use('/api/weight', weightRoutes)
 
 app.get('/api/health', (_, res) => res.json({ ok: true, ts: new Date().toISOString() }))
 
-// Serve static files only when running standalone (not on Vercel)
-if (isProd && !process.env.VERCEL) {
+// Serve built React app when running standalone (Railway / local prod)
+if (!isVercel && process.env.NODE_ENV === 'production') {
   const distPath = join(__dirname, '../dist')
   app.use(express.static(distPath))
   app.get('*', (_, res) => res.sendFile(join(distPath, 'index.html')))

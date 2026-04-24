@@ -10,6 +10,16 @@ function calcTarget(age, heightCm, weightKg) {
   return Math.round(bmr * 1.2 - 500)
 }
 
+function toObj(row) {
+  if (!row) return null
+  const out = {}
+  for (const key of Object.keys(row)) {
+    const v = row[key]
+    out[key] = typeof v === 'bigint' ? Number(v) : v
+  }
+  return out
+}
+
 profileRoutes.get('/', async (req, res) => {
   try {
     const [{ rows: pr }, { rows: ur }] = await Promise.all([
@@ -17,7 +27,9 @@ profileRoutes.get('/', async (req, res) => {
       db.execute({ sql: 'SELECT id, name, email FROM users WHERE id = ?', args: [req.user.userId] }),
     ])
     if (!pr[0] || !ur[0]) return res.status(404).json({ error: 'Profile not found' })
-    res.json({ ...pr[0], name: ur[0].name, email: ur[0].email })
+    const profile = toObj(pr[0])
+    const user = toObj(ur[0])
+    res.json({ ...profile, name: user.name, email: user.email })
   } catch (err) {
     console.error(err)
     res.status(500).json({ error: 'Server error' })

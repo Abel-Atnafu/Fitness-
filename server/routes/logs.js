@@ -5,6 +5,35 @@ import { authenticate } from '../middleware/auth.js'
 export const logsRoutes = Router()
 logsRoutes.use(authenticate)
 
+// Convert a libsql Row to a safe plain JS object (handles BigInt)
+function toObj(row) {
+  if (!row) return null
+  const out = {}
+  for (const key of Object.keys(row)) {
+    const v = row[key]
+    out[key] = typeof v === 'bigint' ? Number(v) : v
+  }
+  return out
+}
+
+// History: last N days calorie totals — MUST be before /:date to avoid swallowing GET /
+logsRoutes.get('/', async (req, res) => {
+  const { userId } = req.user
+  const days = Math.min(parseInt(req.query.days) || 7, 90)
+  try {
+    const { rows } = await db.execute({
+      sql: `SELECT date, CAST(COALESCE(SUM(calories), 0) AS INTEGER) as totalCalories
+            FROM food_entries WHERE user_id=?
+            GROUP BY date ORDER BY date DESC LIMIT ?`,
+      args: [userId, days],
+    })
+    res.json(rows.map(toObj))
+  } catch (err) {
+    console.error(err)
+    res.status(500).json({ error: 'Server error' })
+  }
+})
+
 // Get full day log
 logsRoutes.get('/:date', async (req, res) => {
   const { userId } = req.user
@@ -17,34 +46,22 @@ logsRoutes.get('/:date', async (req, res) => {
               FROM food_entries WHERE user_id=? AND date=? ORDER BY logged_at ASC`,
         args: [userId, date],
       }),
-      db.execute({ sql: 'SELECT glasses FROM water_logs WHERE user_id=? AND date=?', args: [userId, date] }),
-      db.execute({ sql: 'SELECT slot, eaten FROM meals_eaten WHERE user_id=? AND date=?', args: [userId, date] }),
+      db.execute({
+        sql: 'SELECT glasses FROM water_logs WHERE user_id=? AND date=?',
+        args: [userId, date],
+      }),
+      db.execute({
+        sql: 'SELECT slot, eaten FROM meals_eaten WHERE user_id=? AND date=?',
+        args: [userId, date],
+      }),
     ])
-    const mealsEaten = Object.fromEntries(mealRes.rows.map(r => [r.slot, r.eaten === 1]))
+    const mealsEaten = Object.fromEntries(mealRes.rows.map(r => [r.slot, Number(r.eaten) === 1]))
     res.json({
       date,
-      foodEntries: foodRes.rows,
-      waterGlasses: waterRes.rows[0]?.glasses ?? 0,
+      foodEntries: foodRes.rows.map(toObj),
+      waterGlasses: waterRes.rows[0] ? Number(waterRes.rows[0].glasses) : 0,
       mealsEaten,
     })
-  } catch (err) {
-    console.error(err)
-    res.status(500).json({ error: 'Server error' })
-  }
-})
-
-// History: last N days calorie totals
-logsRoutes.get('/', async (req, res) => {
-  const { userId } = req.user
-  const days = Math.min(parseInt(req.query.days) || 7, 90)
-  try {
-    const { rows } = await db.execute({
-      sql: `SELECT date, CAST(COALESCE(SUM(calories), 0) AS INTEGER) as totalCalories
-            FROM food_entries WHERE user_id=?
-            GROUP BY date ORDER BY date DESC LIMIT ?`,
-      args: [userId, days],
-    })
-    res.json(rows)
   } catch (err) {
     console.error(err)
     res.status(500).json({ error: 'Server error' })
@@ -70,7 +87,7 @@ logsRoutes.post('/food', async (req, res) => {
             FROM food_entries WHERE id=?`,
       args: [Number(result.lastInsertRowid)],
     })
-    res.status(201).json(rows[0])
+    res.status(201).json(toObj(rows[0]))
   } catch (err) {
     console.error(err)
     res.status(500).json({ error: 'Server error' })

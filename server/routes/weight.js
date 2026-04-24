@@ -5,13 +5,23 @@ import { authenticate } from '../middleware/auth.js'
 export const weightRoutes = Router()
 weightRoutes.use(authenticate)
 
+function toObj(row) {
+  if (!row) return null
+  const out = {}
+  for (const key of Object.keys(row)) {
+    const v = row[key]
+    out[key] = typeof v === 'bigint' ? Number(v) : v
+  }
+  return out
+}
+
 weightRoutes.get('/', async (req, res) => {
   try {
     const { rows } = await db.execute({
       sql: 'SELECT id, date, weight_kg FROM weight_entries WHERE user_id=? ORDER BY date ASC',
       args: [req.user.userId],
     })
-    res.json(rows)
+    res.json(rows.map(toObj))
   } catch (err) {
     console.error(err)
     res.status(500).json({ error: 'Server error' })

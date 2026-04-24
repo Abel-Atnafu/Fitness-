@@ -1,7 +1,12 @@
 import { createClient } from '@libsql/client'
 
+// On Vercel: use Turso (required). Fallback: writable /tmp for testing.
+// Locally: use a local SQLite file.
+const url = process.env.TURSO_DATABASE_URL
+  || (process.env.VERCEL ? 'file:/tmp/fitethio.db' : 'file:local.db')
+
 export const db = createClient({
-  url: process.env.TURSO_DATABASE_URL || 'file:server/fitethio.db',
+  url,
   authToken: process.env.TURSO_AUTH_TOKEN,
 })
 
