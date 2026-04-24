@@ -1,17 +1,25 @@
 import { neon } from '@neondatabase/serverless'
 
-const sql = neon(process.env.DATABASE_URL)
-
+let sql = null
 let initialized = false
 
+function getSql() {
+  if (sql) return sql
+  if (!process.env.DATABASE_URL) {
+    throw new Error('DATABASE_URL environment variable is not set. Add it in Vercel → Settings → Environment Variables.')
+  }
+  sql = neon(process.env.DATABASE_URL)
+  return sql
+}
+
 export async function query(text, params = []) {
-  const rows = await sql(text, params)
+  const rows = await getSql()(text, params)
   return { rows }
 }
 
 export async function initDb() {
   if (initialized) return
-  initialized = true
+  const db = getSql()
   const stmts = [
     `CREATE TABLE IF NOT EXISTS users (
       id SERIAL PRIMARY KEY,
@@ -63,6 +71,7 @@ export async function initDb() {
     )`,
   ]
   for (const stmt of stmts) {
-    await sql(stmt)
+    await db(stmt)
   }
+  initialized = true
 }
