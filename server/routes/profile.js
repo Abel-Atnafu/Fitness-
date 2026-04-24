@@ -10,29 +10,51 @@ function calcTarget(age, heightCm, weightKg) {
   return Math.round(bmr * 1.2 - 500)
 }
 
-profileRoutes.get('/', (req, res) => {
-  const profile = db.prepare('SELECT * FROM profiles WHERE user_id = ?').get(req.user.userId)
-  const user = db.prepare('SELECT id, name, email FROM users WHERE id = ?').get(req.user.userId)
-  if (!profile || !user) return res.status(404).json({ error: 'Profile not found' })
-  res.json({ ...profile, name: user.name, email: user.email })
+profileRoutes.get('/', async (req, res) => {
+  try {
+    const [{ rows: pr }, { rows: ur }] = await Promise.all([
+      db.execute({ sql: 'SELECT * FROM profiles WHERE user_id = ?', args: [req.user.userId] }),
+      db.execute({ sql: 'SELECT id, name, email FROM users WHERE id = ?', args: [req.user.userId] }),
+    ])
+    if (!pr[0] || !ur[0]) return res.status(404).json({ error: 'Profile not found' })
+    res.json({ ...pr[0], name: ur[0].name, email: ur[0].email })
+  } catch (err) {
+    console.error(err)
+    res.status(500).json({ error: 'Server error' })
+  }
 })
 
-profileRoutes.put('/', (req, res) => {
-  const { name, age, height_cm, current_weight_kg, goal_weight_kg } = req.body
-  const target = calcTarget(age, height_cm, current_weight_kg)
-  db.prepare(`
-    UPDATE profiles SET age=?, height_cm=?, current_weight_kg=?, goal_weight_kg=?, daily_calorie_target=?
-    WHERE user_id=?
-  `).run(age, height_cm, current_weight_kg, goal_weight_kg, target, req.user.userId)
-  if (name) db.prepare('UPDATE users SET name=? WHERE id=?').run(name.trim(), req.user.userId)
-  res.json({ success: true, daily_calorie_target: target })
+profileRoutes.put('/', async (req, res) => {
+  try {
+    const { name, age, height_cm, current_weight_kg, goal_weight_kg } = req.body
+    const target = calcTarget(age, height_cm, current_weight_kg)
+    await db.execute({
+      sql: `UPDATE profiles SET age=?, height_cm=?, current_weight_kg=?, goal_weight_kg=?, daily_calorie_target=?
+            WHERE user_id=?`,
+      args: [age, height_cm, current_weight_kg, goal_weight_kg, target, req.user.userId],
+    })
+    if (name) {
+      await db.execute({ sql: 'UPDATE users SET name=? WHERE id=?', args: [name.trim(), req.user.userId] })
+    }
+    res.json({ success: true, daily_calorie_target: target })
+  } catch (err) {
+    console.error(err)
+    res.status(500).json({ error: 'Server error' })
+  }
 })
 
-profileRoutes.delete('/data', (req, res) => {
-  const { userId } = req.user
-  db.prepare('DELETE FROM food_entries WHERE user_id=?').run(userId)
-  db.prepare('DELETE FROM meals_eaten WHERE user_id=?').run(userId)
-  db.prepare('DELETE FROM water_logs WHERE user_id=?').run(userId)
-  db.prepare('DELETE FROM weight_entries WHERE user_id=?').run(userId)
-  res.json({ success: true })
+profileRoutes.delete('/data', async (req, res) => {
+  try {
+    const { userId } = req.user
+    await Promise.all([
+      db.execute({ sql: 'DELETE FROM food_entries WHERE user_id=?', args: [userId] }),
+      db.execute({ sql: 'DELETE FROM meals_eaten WHERE user_id=?', args: [userId] }),
+      db.execute({ sql: 'DELETE FROM water_logs WHERE user_id=?', args: [userId] }),
+      db.execute({ sql: 'DELETE FROM weight_entries WHERE user_id=?', args: [userId] }),
+    ])
+    res.json({ success: true })
+  } catch (err) {
+    console.error(err)
+    res.status(500).json({ error: 'Server error' })
+  }
 })
