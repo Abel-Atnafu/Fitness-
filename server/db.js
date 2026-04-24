@@ -1,40 +1,36 @@
-import { createClient } from '@libsql/client'
+import { neon } from '@neondatabase/serverless'
 
-// On Vercel: use Turso (required). Fallback: writable /tmp for testing.
-// Locally: use a local SQLite file.
-const url = process.env.TURSO_DATABASE_URL
-  || (process.env.VERCEL ? 'file:/tmp/fitethio.db' : 'file:local.db')
-
-export const db = createClient({
-  url,
-  authToken: process.env.TURSO_AUTH_TOKEN,
-})
+const sql = neon(process.env.DATABASE_URL)
 
 let initialized = false
+
+export async function query(text, params = []) {
+  const rows = await sql(text, params)
+  return { rows }
+}
 
 export async function initDb() {
   if (initialized) return
   initialized = true
   const stmts = [
     `CREATE TABLE IF NOT EXISTS users (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      id SERIAL PRIMARY KEY,
       email TEXT UNIQUE NOT NULL,
       password_hash TEXT NOT NULL,
       name TEXT NOT NULL,
-      created_at TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))
+      created_at TIMESTAMPTZ DEFAULT NOW()
     )`,
     `CREATE TABLE IF NOT EXISTS profiles (
-      user_id INTEGER PRIMARY KEY,
+      user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
       age INTEGER DEFAULT 22,
       height_cm REAL DEFAULT 185,
       current_weight_kg REAL DEFAULT 95,
       goal_weight_kg REAL DEFAULT 80,
-      daily_calorie_target INTEGER DEFAULT 1900,
-      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+      daily_calorie_target INTEGER DEFAULT 1900
     )`,
     `CREATE TABLE IF NOT EXISTS food_entries (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      user_id INTEGER NOT NULL,
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
       date TEXT NOT NULL,
       food_name TEXT NOT NULL,
       calories INTEGER NOT NULL,
@@ -43,36 +39,30 @@ export async function initDb() {
       fat REAL DEFAULT 0,
       emoji TEXT DEFAULT '🍽️',
       category TEXT DEFAULT 'Other',
-      logged_at TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
-      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+      logged_at TIMESTAMPTZ DEFAULT NOW()
     )`,
     `CREATE TABLE IF NOT EXISTS meals_eaten (
-      user_id INTEGER NOT NULL,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
       date TEXT NOT NULL,
       slot TEXT NOT NULL,
       eaten INTEGER DEFAULT 0,
-      PRIMARY KEY (user_id, date, slot),
-      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+      PRIMARY KEY (user_id, date, slot)
     )`,
     `CREATE TABLE IF NOT EXISTS water_logs (
-      user_id INTEGER NOT NULL,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
       date TEXT NOT NULL,
       glasses INTEGER DEFAULT 0,
-      PRIMARY KEY (user_id, date),
-      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+      PRIMARY KEY (user_id, date)
     )`,
     `CREATE TABLE IF NOT EXISTS weight_entries (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      user_id INTEGER NOT NULL,
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
       date TEXT NOT NULL,
       weight_kg REAL NOT NULL,
-      UNIQUE(user_id, date),
-      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+      UNIQUE(user_id, date)
     )`,
   ]
-  for (const sql of stmts) {
-    await db.execute(sql)
+  for (const stmt of stmts) {
+    await sql(stmt)
   }
 }
-
-export default db

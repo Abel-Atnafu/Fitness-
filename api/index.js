@@ -12,7 +12,7 @@ export default async function handler(req, res) {
     await initPromise
   } catch (err) {
     return res.status(503).json({
-      error: 'Database unavailable. Check TURSO_DATABASE_URL and TURSO_AUTH_TOKEN environment variables.',
+      error: 'Database unavailable. Check DATABASE_URL environment variable in Vercel settings.',
     })
   }
   return app(req, res)
