@@ -46,6 +46,19 @@ export default function Login() {
     } catch {}
   }
 
+  async function handleDemo() {
+    setError(null)
+    const demoEmail = 'demo@fitethio.com'
+    const demoPassword = 'demo1234'
+    try {
+      await login(demoEmail, demoPassword)
+    } catch {
+      try {
+        await register('Demo User', demoEmail, demoPassword)
+      } catch {}
+    }
+  }
+
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-5 relative overflow-hidden"
       style={{ background: 'linear-gradient(135deg, #060b18 0%, #0d1526 50%, #111d35 100%)' }}>
@@ -163,6 +176,25 @@ export default function Login() {
               {authLoading ? '...' : tab === 'login' ? 'Sign In' : 'Create Account'}
             </motion.button>
           </form>
+
+          <div className="flex items-center gap-3 my-4">
+            <div className="flex-1 h-px" style={{ background: 'rgba(255,255,255,0.08)' }} />
+            <span className="text-white/20 text-xs">or</span>
+            <div className="flex-1 h-px" style={{ background: 'rgba(255,255,255,0.08)' }} />
+          </div>
+
+          <motion.button
+            whileTap={{ scale: 0.97 }}
+            onClick={handleDemo}
+            disabled={authLoading}
+            className="w-full py-3.5 rounded-2xl font-display font-bold text-sm transition-all disabled:opacity-60 flex items-center justify-center gap-2"
+            style={{
+              background: 'rgba(132,204,22,0.1)',
+              border: '1px solid rgba(132,204,22,0.25)',
+              color: '#84cc16',
+            }}>
+            🚀 Try Demo — One Click
+          </motion.button>
 
           {tab === 'register' && (
             <p className="text-center text-white/25 text-xs mt-4">
