@@ -2,12 +2,17 @@ import { motion } from 'framer-motion'
 import { MEAL_PLANS } from '../../data/mealPlans'
 import { MealCard } from './MealCard'
 import { useApp } from '../../context/AppContext'
+import { getConflicts } from '../../utils/dietary'
 
 const todayIndex = new Date().getDay() === 0 ? 6 : new Date().getDay() - 1
 
 export function MealPlanDay() {
-  const { activeMealPlanDay, setActiveMealPlanDay, mealSwapIndices } = useApp()
+  const { activeMealPlanDay, setActiveMealPlanDay, mealSwapIndices, profile } = useApp()
   const plan = MEAL_PLANS[activeMealPlanDay]
+  const prefs = {
+    allergies: profile?.allergies ?? [],
+    dietaryPreferences: profile?.dietaryPreferences ?? [],
+  }
 
   return (
     <div>
@@ -48,16 +53,28 @@ export function MealPlanDay() {
         </div>
       </div>
 
-      {/* Cards — Bug 2 fix: derive displayed meal from alternates pool via swap index */}
+      {/* Cards — derive displayed meal from alternates pool via swap index.
+          Pool is filtered by user prefs; if everything conflicts, fall back to
+          the unfiltered pool and surface conflict reasons on the card. */}
       <div className="flex flex-col gap-3">
         {['breakfast', 'lunch', 'dinner'].map(slot => {
           const primary = plan.meals[slot]
-          const pool = [primary, ...(primary.alternates ?? [])]
+          const fullPool = [primary, ...(primary.alternates ?? [])]
+          const allowedPool = fullPool.filter(m => getConflicts(m, prefs).length === 0)
+          const pool = allowedPool.length > 0 ? allowedPool : fullPool
           const swapKey = `${activeMealPlanDay}-${slot}`
           const swapIdx = mealSwapIndices[swapKey] ?? 0
           const { alternates: _dropped, ...meal } = pool[swapIdx % pool.length]
+          const conflicts = getConflicts(meal, prefs)
           return (
-            <MealCard key={slot} meal={meal} slot={slot} dayIndex={activeMealPlanDay} poolSize={pool.length} />
+            <MealCard
+              key={slot}
+              meal={meal}
+              slot={slot}
+              dayIndex={activeMealPlanDay}
+              poolSize={pool.length}
+              conflicts={conflicts}
+            />
           )
         })}
       </div>

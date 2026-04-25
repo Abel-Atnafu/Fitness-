@@ -1,20 +1,36 @@
 import { useState, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Search, Plus, Check } from 'lucide-react'
+import { Search, Plus, Check, ShieldAlert } from 'lucide-react'
 import { FOOD_DATABASE, FOOD_CATEGORIES } from '../../data/foodDatabase'
 import { useApp } from '../../context/AppContext'
+import { isAllowed } from '../../utils/dietary'
 
 export function FoodSearch() {
-  const { logFood } = useApp()
+  const { logFood, profile } = useApp()
   const [query, setQuery] = useState('')
   const [category, setCategory] = useState('All')
+  const [showFiltered, setShowFiltered] = useState(false)
   const [added, setAdded] = useState(null)
 
-  const results = useMemo(() => FOOD_DATABASE.filter(f => {
-    const matchCat = category === 'All' || f.category === category
-    const matchQ = f.name.toLowerCase().includes(query.toLowerCase())
-    return matchCat && matchQ
-  }).slice(0, 12), [query, category])
+  const prefs = {
+    allergies: profile?.allergies ?? [],
+    dietaryPreferences: profile?.dietaryPreferences ?? [],
+  }
+  const hasPrefs = prefs.allergies.length > 0 || prefs.dietaryPreferences.length > 0
+
+  const filteredOut = useMemo(() => {
+    if (!hasPrefs) return 0
+    return FOOD_DATABASE.filter(f => !isAllowed(f, prefs)).length
+  }, [hasPrefs, prefs.allergies.join('|'), prefs.dietaryPreferences.join('|')])
+
+  const results = useMemo(() => {
+    return FOOD_DATABASE.filter(f => {
+      const matchCat = category === 'All' || f.category === category
+      const matchQ = f.name.toLowerCase().includes(query.toLowerCase())
+      const matchPrefs = showFiltered || !hasPrefs || isAllowed(f, prefs)
+      return matchCat && matchQ && matchPrefs
+    }).slice(0, 12)
+  }, [query, category, showFiltered, hasPrefs, prefs.allergies.join('|'), prefs.dietaryPreferences.join('|')])
 
   const handleAdd = (food) => {
     logFood(food)
@@ -38,6 +54,27 @@ export function FoodSearch() {
           onBlur={e => e.target.style.borderColor = 'rgba(255,255,255,0.09)'}
         />
       </div>
+
+      {/* Filter banner */}
+      {hasPrefs && filteredOut > 0 && (
+        <button
+          type="button"
+          onClick={() => setShowFiltered(s => !s)}
+          className="w-full flex items-center gap-2 mb-3 px-3 py-2 rounded-xl text-[11px] font-medium text-left"
+          style={{
+            background: showFiltered ? 'rgba(248,113,113,0.08)' : 'rgba(132,204,22,0.08)',
+            border: `1px solid ${showFiltered ? 'rgba(248,113,113,0.22)' : 'rgba(132,204,22,0.22)'}`,
+            color: showFiltered ? '#f87171' : '#84cc16',
+          }}>
+          <ShieldAlert size={12} className="flex-shrink-0" />
+          <span className="flex-1">
+            {showFiltered
+              ? `Showing all foods, including ${filteredOut} that conflict with your preferences`
+              : `Hiding ${filteredOut} ${filteredOut === 1 ? 'food' : 'foods'} that conflict with your preferences`}
+          </span>
+          <span className="text-[10px] opacity-70">{showFiltered ? 'Hide them' : 'Show all'}</span>
+        </button>
+      )}
 
       {/* Category tabs */}
       <div className="flex gap-1.5 overflow-x-auto pb-1 mb-4 scrollbar-none">

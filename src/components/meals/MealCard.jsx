@@ -1,12 +1,12 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { RefreshCw, CheckCircle2, Clock, ChevronDown } from 'lucide-react'
+import { RefreshCw, CheckCircle2, Clock, ChevronDown, AlertTriangle } from 'lucide-react'
 import { useApp } from '../../context/AppContext'
 
 const SLOT_LABELS = { breakfast: 'Breakfast', lunch: 'Lunch', dinner: 'Dinner' }
 const SLOT_TIMES  = { breakfast: '7–9 AM',   lunch: '12–2 PM', dinner: '6–8 PM' }
 
-export function MealCard({ meal, slot, dayIndex }) {
+export function MealCard({ meal, slot, dayIndex, conflicts = [] }) {
   const { toggleMealEaten, swapMeal, todayLog } = useApp()
   const [expanded, setExpanded] = useState(false)
   const [swapping, setSwapping] = useState(false)
@@ -83,6 +83,16 @@ export function MealCard({ meal, slot, dayIndex }) {
 
           <ChevronDown size={14} className={`text-white/25 mt-1 flex-shrink-0 transition-transform ${expanded ? 'rotate-180' : ''}`} />
         </div>
+
+        {conflicts.length > 0 && (
+          <div className="mt-2.5 flex items-start gap-2 px-2.5 py-1.5 rounded-lg"
+            style={{ background: 'rgba(248,113,113,0.08)', border: '1px solid rgba(248,113,113,0.22)' }}>
+            <AlertTriangle size={11} className="text-red-400 mt-0.5 flex-shrink-0" />
+            <span className="text-red-300/85 text-[11px] leading-snug">
+              Conflicts with your preferences: {conflicts.join(' · ')}
+            </span>
+          </div>
+        )}
       </div>
 
       {/* Expanded */}
