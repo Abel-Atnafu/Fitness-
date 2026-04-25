@@ -36,6 +36,7 @@ export default function Profile() {
     heightCm: profile?.heightCm ?? 185,
     currentWeightKg: profile?.currentWeightKg ?? 95,
     goalWeightKg: profile?.goalWeightKg ?? 80,
+    gender: profile?.gender ?? 'male',
   })
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
@@ -52,6 +53,7 @@ export default function Profile() {
         heightCm: parseFloat(form.heightCm),
         currentWeightKg: parseFloat(form.currentWeightKg),
         goalWeightKg: parseFloat(form.goalWeightKg),
+        gender: form.gender,
       })
       setSaved(true)
       setTimeout(() => setSaved(false), 2500)
@@ -65,7 +67,8 @@ export default function Profile() {
     const h = parseFloat(form.heightCm)
     const a = parseInt(form.age)
     if (!w || !h || !a) return profile?.dailyCalorieTarget ?? 1900
-    return Math.round((10 * w + 6.25 * h - 5 * a + 5) * 1.2 - 500)
+    const constant = form.gender === 'female' ? -161 : form.gender === 'other' ? -78 : 5
+    return Math.round((10 * w + 6.25 * h - 5 * a + constant) * 1.2 - 500)
   })()
 
   const bmiLabel = bmi < 18.5 ? 'Underweight' : bmi < 25 ? 'Normal' : bmi < 30 ? 'Overweight' : 'Obese'
@@ -112,6 +115,27 @@ export default function Profile() {
           style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}>
           <p className="text-white/35 text-[11px] uppercase tracking-widest font-semibold">Edit Profile</p>
           <Field label="Name" value={form.name} onChange={setField('name')} type="text" />
+          <div>
+            <label className="text-white/35 text-[11px] font-semibold uppercase tracking-wider block mb-1.5">Gender</label>
+            <div className="flex gap-2">
+              {[
+                { v: 'male', label: 'Male' },
+                { v: 'female', label: 'Female' },
+                { v: 'other', label: 'Other' },
+              ].map(g => (
+                <button
+                  key={g.v}
+                  type="button"
+                  onClick={() => setField('gender')(g.v)}
+                  className="flex-1 py-2.5 rounded-xl text-xs font-semibold transition-all"
+                  style={form.gender === g.v
+                    ? { background: 'rgba(251,191,36,0.15)', color: '#fbbf24', border: '1px solid rgba(251,191,36,0.35)' }
+                    : { background: 'rgba(255,255,255,0.05)', color: 'rgba(255,255,255,0.45)', border: '1px solid rgba(255,255,255,0.08)' }}>
+                  {g.label}
+                </button>
+              ))}
+            </div>
+          </div>
           <div className="grid grid-cols-2 gap-3">
             <Field label="Age" value={form.age} onChange={setField('age')} min="10" max="100" step="1" suffix="yrs" />
             <Field label="Height" value={form.heightCm} onChange={setField('heightCm')} min="100" max="250" suffix="cm" />

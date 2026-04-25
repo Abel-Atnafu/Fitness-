@@ -68,6 +68,8 @@ export function AppProvider({ children }) {
         currentWeightKg: prof.current_weight_kg,
         goalWeightKg: prof.goal_weight_kg,
         dailyCalorieTarget: prof.daily_calorie_target,
+        gender: prof.gender ?? 'male',
+        isAdmin: !!prof.is_admin,
       })
       setTodayLog({ foodEntries: log.foodEntries, waterGlasses: log.waterGlasses, mealsEaten: log.mealsEaten })
       setWeightEntries(weights.map(w => ({ date: w.date, weight: w.weight_kg })))
@@ -225,6 +227,7 @@ export function AppProvider({ children }) {
         height_cm: p?.heightCm,
         current_weight_kg: weight_kg,
         goal_weight_kg: p?.goalWeightKg,
+        gender: p?.gender ?? 'male',
       })
       setProfile(prev => ({ ...prev, dailyCalorieTarget: result.daily_calorie_target }))
     } catch (err) {
@@ -240,12 +243,27 @@ export function AppProvider({ children }) {
         height_cm: data.heightCm,
         current_weight_kg: data.currentWeightKg,
         goal_weight_kg: data.goalWeightKg,
+        gender: data.gender ?? 'male',
       })
-      setProfile(prev => ({ ...prev, ...data, dailyCalorieTarget: result.daily_calorie_target }))
+      setProfile(prev => ({
+        ...prev,
+        ...data,
+        dailyCalorieTarget: result.daily_calorie_target,
+        gender: result.gender ?? data.gender ?? prev?.gender ?? 'male',
+      }))
     } catch (err) {
       setError('Failed to update profile')
       throw err
     }
+  }
+
+  async function fetchAdminData() {
+    const [users, logs, stats] = await Promise.all([
+      api.get('/api/admin/users'),
+      api.get('/api/admin/login-logs'),
+      api.get('/api/admin/stats'),
+    ])
+    return { users, logs, stats }
   }
 
   async function resetData() {
@@ -275,10 +293,11 @@ export function AppProvider({ children }) {
       token, user, login, register, logout, authLoading,
       profile, todayLog, weightEntries, recentHistory, currentStreak,
       logFood, deleteFood, toggleMealEaten, logWater, decrementWater, logWeight,
-      updateProfile, resetData,
+      updateProfile, resetData, fetchAdminData,
       activeMealPlanDay, setActiveMealPlanDay, mealSwapIndices, swapMeal,
       loading, error, setError, todayKey,
       todayCalories, calorieDeficit, bmi, mealsCompletedToday,
+      isAdmin: !!profile?.isAdmin,
     }}>
       {children}
     </AppContext.Provider>

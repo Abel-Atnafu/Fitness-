@@ -6,6 +6,7 @@ import { authRoutes } from './routes/auth.js'
 import { profileRoutes } from './routes/profile.js'
 import { logsRoutes } from './routes/logs.js'
 import { weightRoutes } from './routes/weight.js'
+import { adminRoutes } from './routes/admin.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const app = express()
@@ -28,6 +29,7 @@ app.use('/api/auth', authRoutes)
 app.use('/api/profile', profileRoutes)
 app.use('/api/logs', logsRoutes)
 app.use('/api/weight', weightRoutes)
+app.use('/api/admin', adminRoutes)
 
 app.get('/api/health', (_, res) => res.json({ ok: true, ts: new Date().toISOString() }))
 

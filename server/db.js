@@ -61,6 +61,18 @@ export async function initDb() {
       weight_kg REAL NOT NULL,
       UNIQUE(user_id, date)
     )`,
+    `CREATE TABLE IF NOT EXISTS login_logs (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      logged_in_at TIMESTAMPTZ DEFAULT NOW(),
+      ip_address TEXT,
+      user_agent TEXT
+    )`,
+    `ALTER TABLE users ADD COLUMN IF NOT EXISTS is_admin BOOLEAN DEFAULT FALSE`,
+    `ALTER TABLE users ADD COLUMN IF NOT EXISTS last_login_at TIMESTAMPTZ`,
+    `ALTER TABLE profiles ADD COLUMN IF NOT EXISTS gender TEXT DEFAULT 'male'`,
+    `CREATE INDEX IF NOT EXISTS idx_login_logs_user_id ON login_logs(user_id)`,
+    `CREATE INDEX IF NOT EXISTS idx_login_logs_logged_in_at ON login_logs(logged_in_at DESC)`,
   ]
   for (const stmt of stmts) {
     await sql(stmt)

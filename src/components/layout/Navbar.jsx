@@ -1,6 +1,6 @@
 import { useLocation, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { LogOut } from 'lucide-react'
+import { LogOut, Shield } from 'lucide-react'
 import { format } from 'date-fns'
 import { useApp } from '../../context/AppContext'
 
@@ -10,12 +10,13 @@ const PAGE_TITLES = {
   '/log': 'Food Log',
   '/progress': 'Progress',
   '/profile': 'Profile',
+  '/admin': 'Admin',
 }
 
 export function Navbar() {
   const location = useLocation()
   const navigate = useNavigate()
-  const { profile, logout } = useApp()
+  const { profile, logout, isAdmin } = useApp()
   const title = PAGE_TITLES[location.pathname] || 'FitEthio'
 
   return (
@@ -37,6 +38,19 @@ export function Navbar() {
 
       {/* User + logout */}
       <div className="flex items-center gap-2">
+        {isAdmin && (
+          <motion.button
+            whileTap={{ scale: 0.88 }}
+            onClick={() => navigate('/admin')}
+            title="Admin"
+            className="w-7 h-7 flex items-center justify-center rounded-xl"
+            style={{
+              background: location.pathname === '/admin' ? 'rgba(251,191,36,0.18)' : 'rgba(255,255,255,0.06)',
+              border: location.pathname === '/admin' ? '1px solid rgba(251,191,36,0.4)' : '1px solid rgba(255,255,255,0.09)',
+            }}>
+            <Shield size={13} className="text-gold-400" />
+          </motion.button>
+        )}
         <div className="w-7 h-7 rounded-xl flex items-center justify-center font-display font-bold text-xs text-navy-950"
           style={{ background: 'linear-gradient(135deg, #d97706, #fbbf24)' }}>
           {profile?.name?.[0]?.toUpperCase() ?? 'A'}

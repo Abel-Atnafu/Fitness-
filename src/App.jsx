@@ -11,6 +11,7 @@ import MealPlan from './pages/MealPlan'
 import FoodLog from './pages/FoodLog'
 import Progress from './pages/Progress'
 import Profile from './pages/Profile'
+import Admin from './pages/Admin'
 
 function AnimatedRoutes() {
   const location = useLocation()
@@ -22,6 +23,7 @@ function AnimatedRoutes() {
         <Route path="/log" element={<FoodLog />} />
         <Route path="/progress" element={<Progress />} />
         <Route path="/profile" element={<Profile />} />
+        <Route path="/admin" element={<Admin />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </AnimatePresence>
