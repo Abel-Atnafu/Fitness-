@@ -26,8 +26,18 @@ export async function initDb() {
       height_cm REAL DEFAULT 185,
       current_weight_kg REAL DEFAULT 95,
       goal_weight_kg REAL DEFAULT 80,
-      daily_calorie_target INTEGER DEFAULT 1900
+      daily_calorie_target INTEGER DEFAULT 1900,
+      sex TEXT,
+      activity_level TEXT DEFAULT 'sedentary',
+      goal_type TEXT DEFAULT 'lose',
+      dietary_preferences TEXT[] DEFAULT '{}',
+      allergies TEXT[] DEFAULT '{}'
     )`,
+    `ALTER TABLE profiles ADD COLUMN IF NOT EXISTS sex TEXT`,
+    `ALTER TABLE profiles ADD COLUMN IF NOT EXISTS activity_level TEXT DEFAULT 'sedentary'`,
+    `ALTER TABLE profiles ADD COLUMN IF NOT EXISTS goal_type TEXT DEFAULT 'lose'`,
+    `ALTER TABLE profiles ADD COLUMN IF NOT EXISTS dietary_preferences TEXT[] DEFAULT '{}'`,
+    `ALTER TABLE profiles ADD COLUMN IF NOT EXISTS allergies TEXT[] DEFAULT '{}'`,
     `CREATE TABLE IF NOT EXISTS food_entries (
       id SERIAL PRIMARY KEY,
       user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,

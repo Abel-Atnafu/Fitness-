@@ -68,6 +68,11 @@ export function AppProvider({ children }) {
         currentWeightKg: prof.current_weight_kg,
         goalWeightKg: prof.goal_weight_kg,
         dailyCalorieTarget: prof.daily_calorie_target,
+        sex: prof.sex ?? null,
+        activityLevel: prof.activity_level ?? 'sedentary',
+        goalType: prof.goal_type ?? 'lose',
+        dietaryPreferences: prof.dietary_preferences ?? [],
+        allergies: prof.allergies ?? [],
       })
       setTodayLog({ foodEntries: log.foodEntries, waterGlasses: log.waterGlasses, mealsEaten: log.mealsEaten })
       setWeightEntries(weights.map(w => ({ date: w.date, weight: w.weight_kg })))
@@ -234,13 +239,19 @@ export function AppProvider({ children }) {
 
   async function updateProfile(data) {
     try {
-      const result = await api.put('/api/profile', {
+      const payload = {
         name: data.name,
         age: data.age,
         height_cm: data.heightCm,
         current_weight_kg: data.currentWeightKg,
         goal_weight_kg: data.goalWeightKg,
-      })
+      }
+      if (data.sex !== undefined) payload.sex = data.sex
+      if (data.activityLevel !== undefined) payload.activity_level = data.activityLevel
+      if (data.goalType !== undefined) payload.goal_type = data.goalType
+      if (data.dietaryPreferences !== undefined) payload.dietary_preferences = data.dietaryPreferences
+      if (data.allergies !== undefined) payload.allergies = data.allergies
+      const result = await api.put('/api/profile', payload)
       setProfile(prev => ({ ...prev, ...data, dailyCalorieTarget: result.daily_calorie_target }))
     } catch (err) {
       setError('Failed to update profile')
