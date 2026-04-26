@@ -15,6 +15,10 @@ authRoutes.post('/register', async (req, res) => {
     return res.status(400).json({ error: 'Password must be at least 6 characters' })
   }
   try {
+    const { rows: countRows } = await query('SELECT COUNT(*) AS cnt FROM users')
+    if (parseInt(countRows[0].cnt, 10) >= 50) {
+      return res.status(403).json({ error: 'This app has reached its maximum capacity of 50 users.' })
+    }
     const hash = await bcrypt.hash(password, 10)
     const { rows } = await query(
       'INSERT INTO users (email, password_hash, name) VALUES ($1, $2, $3) RETURNING id',
