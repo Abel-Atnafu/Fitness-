@@ -21,7 +21,7 @@ export function AppProvider({ children }) {
   const [token, setToken] = useState(() => localStorage.getItem('fitethio-token'))
   const [user, setUser] = useState(null)
   const [profile, setProfile] = useState(null)
-  const [todayLog, setTodayLog] = useState({ foodEntries: [], waterGlasses: 0, mealsEaten: {} })
+  const [todayLog, setTodayLog] = useState({ foodEntries: [], exerciseEntries: [], waterGlasses: 0, mealsEaten: {} })
   const [weightEntries, setWeightEntries] = useState([])
   const [recentHistory, setRecentHistory] = useState([])
   const [currentStreak, setCurrentStreak] = useState(0)
@@ -54,11 +54,12 @@ export function AppProvider({ children }) {
   async function loadAllData() {
     setLoading(true)
     try {
-      const [prof, log, weights, history] = await Promise.all([
+      const [prof, log, weights, history, exercise] = await Promise.all([
         api.get('/api/profile'),
         api.get(`/api/logs/${todayKey}`),
         api.get('/api/weight'),
         api.get('/api/logs?days=30'),
+        api.get(`/api/exercise?date=${todayKey}`),
       ])
       setProfile({
         name: prof.name,
@@ -74,7 +75,12 @@ export function AppProvider({ children }) {
         dietaryPreferences: prof.dietary_preferences ?? [],
         allergies: prof.allergies ?? [],
       })
-      setTodayLog({ foodEntries: log.foodEntries, waterGlasses: log.waterGlasses, mealsEaten: log.mealsEaten })
+      setTodayLog({
+        foodEntries: log.foodEntries,
+        exerciseEntries: exercise ?? [],
+        waterGlasses: log.waterGlasses,
+        mealsEaten: log.mealsEaten,
+      })
       setWeightEntries(weights.map(w => ({ date: w.date, weight: w.weight_kg })))
       setRecentHistory(history)
       setCurrentStreak(calcStreak(history))
@@ -123,7 +129,7 @@ export function AppProvider({ children }) {
     setToken(null)
     setUser(null)
     setProfile(null)
-    setTodayLog({ foodEntries: [], waterGlasses: 0, mealsEaten: {} })
+    setTodayLog({ foodEntries: [], exerciseEntries: [], waterGlasses: 0, mealsEaten: {} })
     setWeightEntries([])
     setRecentHistory([])
     setCurrentStreak(0)
@@ -187,6 +193,32 @@ export function AppProvider({ children }) {
     } catch (err) {
       setTodayLog(prev => ({ ...prev, foodEntries: snapshot }))
       setError(err.message || 'Failed to delete food entry')
+    }
+  }
+
+  async function logExercise(ex) {
+    const optimisticId = crypto.randomUUID()
+    setTodayLog(prev => ({ ...prev, exerciseEntries: [...(prev.exerciseEntries ?? []), { id: optimisticId, ...ex }] }))
+    try {
+      const entry = await api.post('/api/exercise', { date: todayKey, ...ex })
+      setTodayLog(prev => ({
+        ...prev,
+        exerciseEntries: prev.exerciseEntries.map(e => e.id === optimisticId ? entry : e),
+      }))
+    } catch (err) {
+      setTodayLog(prev => ({ ...prev, exerciseEntries: prev.exerciseEntries.filter(e => e.id !== optimisticId) }))
+      setError(err.message || 'Failed to log exercise')
+    }
+  }
+
+  async function deleteExercise(id) {
+    const snapshot = todayLog.exerciseEntries
+    setTodayLog(prev => ({ ...prev, exerciseEntries: prev.exerciseEntries.filter(e => e.id !== id) }))
+    try {
+      await api.delete(`/api/exercise/${id}`)
+    } catch (err) {
+      setTodayLog(prev => ({ ...prev, exerciseEntries: snapshot }))
+      setError(err.message || 'Failed to delete exercise entry')
     }
   }
 
@@ -262,7 +294,7 @@ export function AppProvider({ children }) {
   async function resetData() {
     try {
       await api.delete('/api/profile/data')
-      setTodayLog({ foodEntries: [], waterGlasses: 0, mealsEaten: {} })
+      setTodayLog({ foodEntries: [], exerciseEntries: [], waterGlasses: 0, mealsEaten: {} })
       setWeightEntries([])
       setRecentHistory([])
       setCurrentStreak(0)
@@ -277,7 +309,8 @@ export function AppProvider({ children }) {
   }
 
   const todayCalories = todayLog.foodEntries.reduce((s, e) => s + (e.calories ?? 0), 0)
-  const calorieDeficit = (profile?.dailyCalorieTarget ?? 1900) - todayCalories
+  const todayCaloriesBurned = (todayLog.exerciseEntries ?? []).reduce((s, e) => s + (e.calories_burned ?? 0), 0)
+  const calorieDeficit = (profile?.dailyCalorieTarget ?? 1900) - todayCalories + todayCaloriesBurned
   const bmi = profile ? +(profile.currentWeightKg / ((profile.heightCm / 100) ** 2)).toFixed(1) : 0
   const mealsCompletedToday = Object.values(todayLog.mealsEaten ?? {}).filter(Boolean).length
 
@@ -286,10 +319,11 @@ export function AppProvider({ children }) {
       token, user, login, register, logout, authLoading,
       profile, todayLog, weightEntries, recentHistory, currentStreak,
       logFood, deleteFood, toggleMealEaten, logWater, decrementWater, logWeight,
+      logExercise, deleteExercise,
       updateProfile, resetData,
       activeMealPlanDay, setActiveMealPlanDay, mealSwapIndices, swapMeal,
       loading, error, setError, todayKey,
-      todayCalories, calorieDeficit, bmi, mealsCompletedToday,
+      todayCalories, todayCaloriesBurned, calorieDeficit, bmi, mealsCompletedToday,
     }}>
       {children}
     </AppContext.Provider>
