@@ -5,6 +5,7 @@ import { CalorieRing } from '../components/dashboard/CalorieRing'
 import { StreakCard } from '../components/dashboard/StreakCard'
 import { QuickStats } from '../components/dashboard/QuickStats'
 import { MotivationalQuote } from '../components/dashboard/MotivationalQuote'
+import { WeeklySummary } from '../components/dashboard/WeeklySummary'
 import { WeightChart } from '../components/progress/WeightChart'
 import { useApp } from '../context/AppContext'
 
@@ -99,6 +100,9 @@ export default function Dashboard() {
 
         {/* Quick stats */}
         <QuickStats />
+
+        {/* Weekly compliance */}
+        <WeeklySummary />
 
         {/* Quote */}
         <MotivationalQuote />

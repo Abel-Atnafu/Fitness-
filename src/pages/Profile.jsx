@@ -14,9 +14,16 @@ const ACTIVITY_LEVELS = [
 ]
 
 const GOALS = [
-  { id: 'lose',     label: 'Lose fat',  delta: -500 },
-  { id: 'maintain', label: 'Maintain',  delta: 0 },
-  { id: 'gain',     label: 'Gain',      delta: 300 },
+  { id: 'lose',     label: 'Lose fat' },
+  { id: 'maintain', label: 'Maintain' },
+  { id: 'gain',     label: 'Gain' },
+]
+
+const LOSS_RATES = [
+  { value: 0.25, label: '0.25 kg/w', hint: 'Gentle' },
+  { value: 0.5,  label: '0.5 kg/w',  hint: 'Standard' },
+  { value: 0.75, label: '0.75 kg/w', hint: 'Aggressive' },
+  { value: 1.0,  label: '1 kg/w',    hint: 'Max' },
 ]
 
 const DIETARY_OPTIONS = [
@@ -24,13 +31,15 @@ const DIETARY_OPTIONS = [
   'Keto', 'Mediterranean', 'Gluten-free', 'Dairy-free',
 ]
 
-function liveTarget({ age, heightCm, weightKg, sex, activityLevel, goalType }) {
+function liveTarget({ age, heightCm, weightKg, sex, activityLevel, goalType, weeklyRateKg }) {
   const w = parseFloat(weightKg), h = parseFloat(heightCm), a = parseInt(age)
   if (!w || !h || !a) return null
   const sexConst = sex === 'female' ? -161 : sex === 'male' ? 5 : -78
   const bmr = 10 * w + 6.25 * h - 5 * a + sexConst
   const mult = ACTIVITY_LEVELS.find(x => x.id === activityLevel)?.mult ?? 1.2
-  const delta = GOALS.find(x => x.id === goalType)?.delta ?? -500
+  const delta = goalType === 'lose'
+    ? -Math.round((weeklyRateKg ?? 0.5) * 7700 / 7)
+    : goalType === 'gain' ? 300 : 0
   const target = Math.round(bmr * mult + delta)
   const floor = sex === 'female' ? 1200 : 1500
   return Math.max(target, floor)
@@ -101,6 +110,7 @@ export default function Profile() {
     sex: profile?.sex ?? null,
     activityLevel: profile?.activityLevel ?? 'sedentary',
     goalType: profile?.goalType ?? 'lose',
+    weeklyRateKg: profile?.weeklyRateKg ?? 0.5,
     dietaryPreferences: profile?.dietaryPreferences ?? [],
     allergies: profile?.allergies ?? [],
   })
@@ -146,6 +156,7 @@ export default function Profile() {
         sex: form.sex,
         activityLevel: form.activityLevel,
         goalType: form.goalType,
+        weeklyRateKg: form.weeklyRateKg,
         dietaryPreferences: form.dietaryPreferences,
         allergies: form.allergies,
       })
@@ -156,7 +167,10 @@ export default function Profile() {
     }
   }
 
-  const liveCalTarget = liveTarget(form) ?? profile?.dailyCalorieTarget ?? 1900
+  const liveCalTarget = liveTarget({ ...form, weightKg: form.currentWeightKg }) ?? profile?.dailyCalorieTarget ?? 1900
+  const deficitLabel = form.goalType === 'lose'
+    ? `− ${Math.round((form.weeklyRateKg ?? 0.5) * 7700 / 7)} kcal/day deficit`
+    : form.goalType === 'gain' ? '+ 300 kcal surplus' : 'maintenance'
   const bmiLabel = bmi < 18.5 ? 'Underweight' : bmi < 25 ? 'Normal' : bmi < 30 ? 'Overweight' : 'Obese'
   const bmiColor = bmi < 25 ? '#84cc16' : bmi < 30 ? '#f59e0b' : '#f87171'
   const sexMissing = !form.sex
@@ -193,7 +207,7 @@ export default function Profile() {
           </div>
           <div className="text-right text-xs text-white/25 leading-relaxed">
             <p>BMR × activity</p>
-            <p>{form.goalType === 'lose' ? '− 500 deficit' : form.goalType === 'gain' ? '+ 300 surplus' : 'maintenance'}</p>
+            <p>{deficitLabel}</p>
           </div>
         </div>
 
@@ -238,6 +252,20 @@ export default function Profile() {
               ))}
             </div>
           </div>
+
+          {/* Loss rate — only when goal is lose */}
+          {form.goalType === 'lose' && (
+            <div>
+              <p className="text-white/35 text-[11px] font-semibold uppercase tracking-wider mb-1.5">Loss rate</p>
+              <div className="grid grid-cols-2 gap-2">
+                {LOSS_RATES.map(r => (
+                  <SegButton key={r.value} active={form.weeklyRateKg === r.value} onClick={() => setField('weeklyRateKg')(r.value)} sub={r.hint}>
+                    {r.label}
+                  </SegButton>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Activity level */}
           <div>

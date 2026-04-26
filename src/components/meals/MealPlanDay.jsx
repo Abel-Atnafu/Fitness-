@@ -40,7 +40,7 @@ export function MealPlanDay() {
       </div>
 
       {/* Header */}
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center justify-between mb-3">
         <div>
           <h2 className="font-display font-bold text-white text-xl leading-none">{plan.dayName}</h2>
           {activeMealPlanDay === todayIndex && (
@@ -52,6 +52,31 @@ export function MealPlanDay() {
           <div className="text-white/30 text-[11px]">kcal total</div>
         </div>
       </div>
+
+      {/* Calorie gap vs user target */}
+      {profile?.dailyCalorieTarget && (() => {
+        const gap = plan.totalCalories - profile.dailyCalorieTarget
+        const isOver = gap > 0
+        const isClose = Math.abs(gap) <= 50
+        if (isClose) return (
+          <div className="flex items-center gap-2 mb-4 px-3 py-2 rounded-xl text-[11px]"
+            style={{ background: 'rgba(132,204,22,0.07)', border: '1px solid rgba(132,204,22,0.2)', color: '#84cc16' }}>
+            ✓ This plan matches your {profile.dailyCalorieTarget} kcal target
+          </div>
+        )
+        return (
+          <div className="flex items-center gap-2 mb-4 px-3 py-2 rounded-xl text-[11px]"
+            style={{
+              background: isOver ? 'rgba(251,191,36,0.07)' : 'rgba(56,189,248,0.07)',
+              border: `1px solid ${isOver ? 'rgba(251,191,36,0.22)' : 'rgba(56,189,248,0.22)'}`,
+              color: isOver ? '#fbbf24' : '#38bdf8',
+            }}>
+            {isOver
+              ? `⚠ Plan is ${gap} kcal over your ${profile.dailyCalorieTarget} kcal target — consider smaller portions`
+              : `ℹ Plan is ${Math.abs(gap)} kcal under your ${profile.dailyCalorieTarget} kcal target — add a snack`}
+          </div>
+        )
+      })()}
 
       {/* Cards — derive displayed meal from alternates pool via swap index.
           Pool is filtered by user prefs; if everything conflicts, fall back to
