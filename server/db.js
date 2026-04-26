@@ -94,6 +94,17 @@ export async function initDb() {
       weight_kg REAL NOT NULL,
       UNIQUE(user_id, date)
     )`,
+    `CREATE TABLE IF NOT EXISTS exercise_entries (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      date TEXT NOT NULL,
+      exercise_name TEXT NOT NULL,
+      duration_min INTEGER NOT NULL DEFAULT 30,
+      calories_burned INTEGER NOT NULL DEFAULT 0,
+      category TEXT DEFAULT 'Cardio',
+      emoji TEXT DEFAULT '🏃',
+      logged_at TIMESTAMPTZ DEFAULT NOW()
+    )`,
   ]
   for (const stmt of stmts) {
     await sqlFn(stmt, [])

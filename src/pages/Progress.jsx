@@ -1,13 +1,31 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { format } from 'date-fns'
-import { TrendingDown, Trophy, Calendar, Scale } from 'lucide-react'
+import { format, addDays } from 'date-fns'
+import { TrendingDown, Trophy, Calendar, Scale, Target } from 'lucide-react'
 import { PageTransition } from '../components/ui/PageTransition'
 import { WeightChart } from '../components/progress/WeightChart'
 import { CalorieHistoryChart } from '../components/progress/CalorieHistoryChart'
 import { useApp } from '../context/AppContext'
 
 const MILESTONES = [92, 90, 87, 85, 83, 80]
+
+function getProjection(weightEntries, goalWeightKg) {
+  if (weightEntries.length < 3) return null
+  const sorted = [...weightEntries].sort((a, b) => a.date.localeCompare(b.date))
+  const first = sorted[0], last = sorted[sorted.length - 1]
+  const daysDiff = (new Date(last.date) - new Date(first.date)) / 86400000
+  if (daysDiff < 1) return null
+  const dailyRate = (last.weight - first.weight) / daysDiff
+  if (dailyRate >= 0) return { trending: 'up', rate: dailyRate }
+  const daysLeft = (last.weight - goalWeightKg) / Math.abs(dailyRate)
+  if (daysLeft < 0) return { trending: 'reached' }
+  return {
+    trending: 'down',
+    rate: dailyRate,
+    weeklyRate: dailyRate * 7,
+    projectedDate: addDays(new Date(), Math.round(daysLeft)),
+  }
+}
 
 function StatCard({ icon: Icon, label, value, color, delay }) {
   return (
@@ -31,6 +49,7 @@ export default function Progress() {
   const [weightInput, setWeightInput] = useState('')
   const [celebration, setCelebration] = useState(false)
 
+  const projection = getProjection(weightEntries, profile?.goalWeightKg ?? 80)
   const startWeight = weightEntries[0]?.weight ?? profile?.currentWeightKg ?? 95
   const currentWeight = weightEntries[weightEntries.length - 1]?.weight ?? profile?.currentWeightKg ?? 95
   const lost = +(startWeight - currentWeight).toFixed(1)
@@ -120,6 +139,38 @@ export default function Progress() {
           <p className="text-white/30 text-[11px] uppercase tracking-widest font-semibold mb-4">Weight History</p>
           <WeightChart />
         </div>
+
+        {/* Projected goal date */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.25 }}
+          className="rounded-2xl p-4"
+          style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}>
+          <div className="flex items-center gap-2 mb-3">
+            <Target size={13} style={{ color: '#fbbf24' }} />
+            <p className="text-white/30 text-[11px] uppercase tracking-widest font-semibold">Projected Goal Date</p>
+          </div>
+          {!projection ? (
+            <p className="text-white/35 text-sm">Log at least 3 weigh-ins to see your projected goal date.</p>
+          ) : projection.trending === 'reached' ? (
+            <p className="text-lime-400 text-sm font-semibold">You've already reached your goal weight! 🎉</p>
+          ) : projection.trending === 'up' ? (
+            <p className="text-red-400/80 text-sm">Your weight is trending upward — stay on track with your calorie target.</p>
+          ) : (
+            <div>
+              <p className="text-white/70 text-sm">
+                At your current pace, you'll reach{' '}
+                <span className="text-amber-400 font-semibold">{profile?.goalWeightKg ?? 80} kg</span>
+                {' '}by{' '}
+                <span className="text-white font-semibold">{format(projection.projectedDate, 'MMMM d, yyyy')}</span>
+              </p>
+              <p className="text-white/30 text-xs mt-1.5">
+                Rate: <span className="text-lime-400/80">{Math.abs(projection.weeklyRate).toFixed(2)} kg/week</span>
+              </p>
+            </div>
+          )}
+        </motion.div>
 
         {/* 7-day calorie chart */}
         <div className="rounded-2xl p-4" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}>

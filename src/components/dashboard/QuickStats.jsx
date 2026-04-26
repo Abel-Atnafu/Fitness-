@@ -86,9 +86,13 @@ function WaterTracker({ delay }) {
 }
 
 export function QuickStats() {
-  const { mealsCompletedToday, calorieDeficit, bmi } = useApp()
+  const { mealsCompletedToday, calorieDeficit, bmi, todayCaloriesBurned } = useApp()
   const bmiLabel = bmi < 18.5 ? 'Underweight' : bmi < 25 ? 'Normal' : bmi < 30 ? 'Overweight' : 'Obese'
   const bmiColor = bmi < 25 ? '#84cc16' : bmi < 30 ? '#f59e0b' : '#f87171'
+
+  const deficitSub = todayCaloriesBurned > 0
+    ? `${calorieDeficit >= 0 ? 'remaining' : 'over'} · 🔥 ${todayCaloriesBurned} burned`
+    : (calorieDeficit >= 0 ? 'kcal remaining' : 'kcal over budget')
 
   return (
     <div className="grid grid-cols-2 gap-3">
@@ -96,9 +100,9 @@ export function QuickStats() {
       <StatTile icon={UtensilsCrossed} label="Meals" value={`${mealsCompletedToday} / 3`} sub="completed today" color="#84cc16" delay={0.12} />
       <StatTile
         icon={Flame}
-        label="Deficit"
+        label="Net Deficit"
         value={calorieDeficit >= 0 ? `${calorieDeficit}` : `+${Math.abs(calorieDeficit)}`}
-        sub={calorieDeficit >= 0 ? 'kcal remaining' : 'kcal over budget'}
+        sub={deficitSub}
         color={calorieDeficit >= 0 ? '#f59e0b' : '#f87171'}
         delay={0.16}
       />
