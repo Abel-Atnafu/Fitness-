@@ -34,7 +34,14 @@ URL routing in `server/db.js`:
 
 Vite proxies `/api/*` → `http://localhost:3001` so the frontend always calls relative `/api/` URLs.
 
-**Vercel production** — set `DATABASE_URL` and `JWT_SECRET` in Vercel → Settings → Environment Variables.
+**Google OAuth (optional)** — Sign-in with Google requires:
+```
+VITE_GOOGLE_CLIENT_ID=...apps.googleusercontent.com   # exposed in frontend bundle (public)
+GOOGLE_CLIENT_ID=...apps.googleusercontent.com        # backend, must match — used to verify token audience
+```
+Both should hold the same OAuth 2.0 Web App Client ID from console.cloud.google.com (no Client Secret needed — backend verifies access tokens via Google's `tokeninfo`/`userinfo` endpoints in the implicit flow). Authorized JS origins must include your Vite dev URL (`http://localhost:5173`) and prod URL. Without these, the "Continue with Google" button shows a "not configured" notice.
+
+**Vercel production** — set `DATABASE_URL`, `JWT_SECRET`, and (optionally) `VITE_GOOGLE_CLIENT_ID` + `GOOGLE_CLIENT_ID` in Vercel → Settings → Environment Variables.
 
 ## Architecture
 

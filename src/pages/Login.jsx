@@ -1,8 +1,11 @@
 import { useState, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Mail, Lock, User, Eye, EyeOff, AlertCircle, Check, ArrowLeft, Sparkles } from 'lucide-react'
+import { useGoogleLogin } from '@react-oauth/google'
 import { useApp } from '../context/AppContext'
 import { Spinner } from '../components/ui/Spinner'
+
+const GOOGLE_ENABLED = Boolean(import.meta.env.VITE_GOOGLE_CLIENT_ID)
 
 function Input({ icon: Icon, type, placeholder, value, onChange, rightIcon, onRightClick, valid, autoFocus }) {
   return (
@@ -72,7 +75,7 @@ function isValidEmail(e) {
 }
 
 export default function Login() {
-  const { login, register, authLoading, error, setError } = useApp()
+  const { login, register, googleLogin, authLoading, error, setError } = useApp()
   const [tab, setTab] = useState('login') // 'login' | 'register' | 'forgot'
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
@@ -116,9 +119,28 @@ export default function Login() {
     setResetSent(true)
   }
 
+  const triggerGoogle = useGoogleLogin({
+    onSuccess: async ({ access_token }) => {
+      setNotice(null)
+      try {
+        await googleLogin(access_token)
+      } catch {}
+    },
+    onError: () => setError('Google sign-in failed. Please try again.'),
+    onNonOAuthError: (err) => {
+      // popup_closed, popup_failed_to_open, etc. — silent unless it's a real failure.
+      if (err?.type !== 'popup_closed') setError('Google sign-in was cancelled')
+    },
+  })
+
   function handleGoogle() {
-    setNotice('Google sign-in is coming soon. Use email for now.')
-    setTimeout(() => setNotice(null), 3500)
+    setError(null)
+    if (!GOOGLE_ENABLED) {
+      setNotice('Google sign-in is not configured. Set VITE_GOOGLE_CLIENT_ID and restart.')
+      setTimeout(() => setNotice(null), 4000)
+      return
+    }
+    triggerGoogle()
   }
 
   return (
