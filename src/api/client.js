@@ -1,20 +1,48 @@
 async function request(method, path, body) {
   const token = localStorage.getItem('fitethio-token')
-  const res = await fetch(path, {
-    method,
-    headers: {
-      'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
-    ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
-  })
+
+  let res
+  try {
+    res = await fetch(path, {
+      method,
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
+    })
+  } catch {
+    const err = new Error('Network error — check your connection')
+    err.status = 0
+    throw err
+  }
+
   if (!res.ok) {
-    let msg = 'Request failed'
-    try { msg = (await res.json()).error || msg } catch {}
+    let msg = null
+    try {
+      const data = await res.json()
+      msg = data.error || data.message || null
+    } catch {
+      try {
+        const text = await res.text()
+        if (text && text.length < 200 && !text.trim().startsWith('<')) {
+          msg = text.trim()
+        }
+      } catch {}
+    }
+
+    if (!msg) {
+      if (res.status === 503) msg = 'Server temporarily unavailable — please try again shortly'
+      else if (res.status === 401) msg = 'Session expired — please sign in again'
+      else if (res.status >= 500) msg = 'Server error — please try again'
+      else msg = 'Request failed'
+    }
+
     const err = new Error(msg)
     err.status = res.status
     throw err
   }
+
   return res.json()
 }
 
