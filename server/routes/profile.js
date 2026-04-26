@@ -5,9 +5,30 @@ import { authenticate } from '../middleware/auth.js'
 export const profileRoutes = Router()
 profileRoutes.use(authenticate)
 
-function calcTarget(age, heightCm, weightKg) {
-  const bmr = 10 * weightKg + 6.25 * heightCm - 5 * age + 5
-  return Math.round(bmr * 1.2 - 500)
+const ACTIVITY_MULTIPLIERS = {
+  sedentary: 1.2,
+  light: 1.375,
+  moderate: 1.55,
+  very: 1.725,
+  extreme: 1.9,
+}
+
+const GOAL_DELTAS = {
+  lose: -500,
+  maintain: 0,
+  gain: 300,
+}
+
+// Mifflin-St Jeor with sex branch, activity-adjusted TDEE, goal-based deficit,
+// and a calorie floor to discourage dangerous restriction.
+function calcTarget({ age, heightCm, weightKg, sex, activityLevel, goalType }) {
+  // Sex constant: +5 (male), -161 (female), -78 (unspecified avg).
+  const sexConstant = sex === 'female' ? -161 : sex === 'male' ? 5 : -78
+  const bmr = 10 * weightKg + 6.25 * heightCm - 5 * age + sexConstant
+  const tdee = bmr * (ACTIVITY_MULTIPLIERS[activityLevel] ?? 1.2)
+  const target = Math.round(tdee + (GOAL_DELTAS[goalType] ?? -500))
+  const floor = sex === 'female' ? 1200 : 1500
+  return Math.max(target, floor)
 }
 
 profileRoutes.get('/', async (req, res) => {
@@ -24,14 +45,44 @@ profileRoutes.get('/', async (req, res) => {
   }
 })
 
+// Partial update: any field omitted from the body is preserved. The calorie
+// target is always recomputed from the merged values.
 profileRoutes.put('/', async (req, res) => {
   try {
-    const { name, age, height_cm, current_weight_kg, goal_weight_kg } = req.body
-    const target = calcTarget(age, height_cm, current_weight_kg)
+    const {
+      name, age, height_cm, current_weight_kg, goal_weight_kg,
+      sex, activity_level, goal_type, dietary_preferences, allergies,
+    } = req.body
+
+    const { rows } = await query('SELECT * FROM profiles WHERE user_id = $1', [req.user.userId])
+    const cur = rows[0]
+    if (!cur) return res.status(404).json({ error: 'Profile not found' })
+
+    const merged = {
+      age: age ?? cur.age,
+      heightCm: height_cm ?? cur.height_cm,
+      weightKg: current_weight_kg ?? cur.current_weight_kg,
+      goalWeightKg: goal_weight_kg ?? cur.goal_weight_kg,
+      sex: sex ?? cur.sex,
+      activityLevel: activity_level ?? cur.activity_level ?? 'sedentary',
+      goalType: goal_type ?? cur.goal_type ?? 'lose',
+      dietaryPreferences: dietary_preferences ?? cur.dietary_preferences ?? [],
+      allergies: allergies ?? cur.allergies ?? [],
+    }
+    const target = calcTarget(merged)
+
     await query(
-      `UPDATE profiles SET age=$1, height_cm=$2, current_weight_kg=$3, goal_weight_kg=$4, daily_calorie_target=$5
-       WHERE user_id=$6`,
-      [age, height_cm, current_weight_kg, goal_weight_kg, target, req.user.userId]
+      `UPDATE profiles SET
+         age=$1, height_cm=$2, current_weight_kg=$3, goal_weight_kg=$4,
+         daily_calorie_target=$5, sex=$6, activity_level=$7, goal_type=$8,
+         dietary_preferences=$9, allergies=$10
+       WHERE user_id=$11`,
+      [
+        merged.age, merged.heightCm, merged.weightKg, merged.goalWeightKg,
+        target, merged.sex, merged.activityLevel, merged.goalType,
+        merged.dietaryPreferences, merged.allergies,
+        req.user.userId,
+      ]
     )
     if (name) {
       await query('UPDATE users SET name=$1 WHERE id=$2', [name.trim(), req.user.userId])
