@@ -6,6 +6,37 @@ import { rememberAccount } from '../utils/knownAccounts.js'
 const AppContext = createContext(null)
 const todayKey = format(new Date(), 'yyyy-MM-dd')
 
+function getISOWeek(date) {
+  const d = new Date(date)
+  d.setHours(0, 0, 0, 0)
+  d.setDate(d.getDate() + 4 - (d.getDay() || 7))
+  const yearStart = new Date(d.getFullYear(), 0, 1)
+  return { week: Math.ceil(((d - yearStart) / 86400000 + 1) / 7), year: d.getFullYear() }
+}
+
+function generateWeekIndices(week, year) {
+  const indices = {}
+  let s = ((week * 2654435761) ^ (year * 40503)) >>> 0
+  for (let day = 0; day < 7; day++) {
+    for (const slot of ['breakfast', 'lunch', 'dinner']) {
+      s = (Math.imul(s, 1664525) + 1013904223) >>> 0
+      indices[`${day}-${slot}`] = s % 100
+    }
+  }
+  return indices
+}
+
+function loadWeekPlan() {
+  const { week, year } = getISOWeek(new Date())
+  try {
+    const stored = JSON.parse(localStorage.getItem('fitethio-week-plan') ?? 'null')
+    if (stored?.week === week && stored?.year === year) return stored.baseIndices
+  } catch {}
+  const baseIndices = generateWeekIndices(week, year)
+  localStorage.setItem('fitethio-week-plan', JSON.stringify({ week, year, baseIndices }))
+  return baseIndices
+}
+
 function calcStreak(history) {
   const map = Object.fromEntries(history.map(h => [h.date, h.totalCalories]))
   let streak = 0
@@ -30,6 +61,7 @@ export function AppProvider({ children }) {
     new Date().getDay() === 0 ? 6 : new Date().getDay() - 1
   )
   const [mealSwapIndices, setMealSwapIndices] = useState({})
+  const [weekBaseIndices, setWeekBaseIndices] = useState(loadWeekPlan)
   const [loading, setLoading] = useState(true)
   const [authLoading, setAuthLoading] = useState(false)
   const [error, setError] = useState(null)
@@ -37,6 +69,23 @@ export function AppProvider({ children }) {
   // Bug 8 fix: always-current profile ref for logWeight
   const profileRef = useRef(profile)
   useEffect(() => { profileRef.current = profile }, [profile])
+
+  // Regenerate meal plan when the ISO week rolls over (detected on window focus)
+  useEffect(() => {
+    function checkWeek() {
+      const { week, year } = getISOWeek(new Date())
+      try {
+        const stored = JSON.parse(localStorage.getItem('fitethio-week-plan') ?? 'null')
+        if (stored?.week === week && stored?.year === year) return
+      } catch {}
+      const baseIndices = generateWeekIndices(week, year)
+      localStorage.setItem('fitethio-week-plan', JSON.stringify({ week, year, baseIndices }))
+      setWeekBaseIndices(baseIndices)
+      setMealSwapIndices({})
+    }
+    window.addEventListener('focus', checkWeek)
+    return () => window.removeEventListener('focus', checkWeek)
+  }, [])
 
   // Bug 7 fix: debounced water sync to avoid race on rapid taps
   const waterSyncTimer = useRef(null)
@@ -334,7 +383,7 @@ export function AppProvider({ children }) {
       logFood, deleteFood, toggleMealEaten, logWater, decrementWater, logWeight,
       logExercise, deleteExercise,
       updateProfile, resetData,
-      activeMealPlanDay, setActiveMealPlanDay, mealSwapIndices, swapMeal,
+      activeMealPlanDay, setActiveMealPlanDay, mealSwapIndices, weekBaseIndices, swapMeal,
       loading, error, setError, todayKey,
       todayCalories, todayCaloriesBurned, calorieDeficit, bmi, mealsCompletedToday,
     }}>
