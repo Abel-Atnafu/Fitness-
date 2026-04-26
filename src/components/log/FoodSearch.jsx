@@ -7,11 +7,14 @@ import { isAllowed } from '../../utils/dietary'
 
 const SERVING_CHIPS = [0.5, 1, 1.5, 2]
 
+const PAGE_SIZE = 12
+
 export function FoodSearch() {
   const { logFood, profile } = useApp()
   const [query, setQuery] = useState('')
   const [category, setCategory] = useState('All')
   const [showFiltered, setShowFiltered] = useState(false)
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE)
   const [portioning, setPortioning] = useState(null) // { food, servings }
   const [showCustom, setShowCustom] = useState(false)
   const [customFood, setCustomFood] = useState({ name: '', calories: '', protein: '', carbs: '', fat: '', category: 'Other' })
@@ -28,14 +31,17 @@ export function FoodSearch() {
     return FOOD_DATABASE.filter(f => !isAllowed(f, prefs)).length
   }, [hasPrefs, prefs.allergies.join('|'), prefs.dietaryPreferences.join('|')])
 
-  const results = useMemo(() => {
+  const allResults = useMemo(() => {
+    setVisibleCount(PAGE_SIZE)
     return FOOD_DATABASE.filter(f => {
       const matchCat = category === 'All' || f.category === category
       const matchQ = f.name.toLowerCase().includes(query.toLowerCase())
       const matchPrefs = showFiltered || !hasPrefs || isAllowed(f, prefs)
       return matchCat && matchQ && matchPrefs
-    }).slice(0, 12)
+    })
   }, [query, category, showFiltered, hasPrefs, prefs.allergies.join('|'), prefs.dietaryPreferences.join('|')])
+
+  const results = allResults.slice(0, visibleCount)
 
   const handlePlusClick = (food) => {
     if (portioning?.food?.id === food.id) {
@@ -44,6 +50,8 @@ export function FoodSearch() {
       setPortioning({ food, servings: 1 })
     }
   }
+
+  const handleShowMore = () => setVisibleCount(c => c + PAGE_SIZE)
 
   const handleLogPortioned = () => {
     if (!portioning) return
@@ -229,7 +237,7 @@ export function FoodSearch() {
       {/* Results */}
       <div className="rounded-2xl overflow-hidden" style={{ border: '1px solid rgba(255,255,255,0.07)' }}>
         <AnimatePresence mode="popLayout">
-          {results.length === 0 ? (
+          {allResults.length === 0 ? (
             <motion.div key="empty" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="py-8 text-center">
               <p className="text-white/25 text-sm">No results for "{query}"</p>
               <button
@@ -327,6 +335,17 @@ export function FoodSearch() {
           ))}
         </AnimatePresence>
       </div>
+
+      {/* Show more */}
+      {visibleCount < allResults.length && (
+        <motion.button
+          whileTap={{ scale: 0.96 }}
+          onClick={handleShowMore}
+          className="w-full mt-3 py-2.5 rounded-xl text-xs font-semibold"
+          style={{ background: 'rgba(255,255,255,0.05)', color: 'rgba(255,255,255,0.45)', border: '1px solid rgba(255,255,255,0.09)' }}>
+          Show more ({allResults.length - visibleCount} remaining)
+        </motion.button>
+      )}
     </div>
   )
 }
