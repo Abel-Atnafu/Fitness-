@@ -1,6 +1,5 @@
 import { HashRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { AnimatePresence } from 'framer-motion'
-import { GoogleOAuthProvider } from '@react-oauth/google'
 import { AppProvider, useApp } from './context/AppContext'
 import { Navbar } from './components/layout/Navbar'
 import { BottomNav } from './components/layout/BottomNav'
@@ -58,16 +57,12 @@ function AppShell() {
   )
 }
 
-const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || ''
-
 export default function App() {
   return (
-    <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
-      <AppProvider>
-        <HashRouter>
-          <AppShell />
-        </HashRouter>
-      </AppProvider>
-    </GoogleOAuthProvider>
+    <AppProvider>
+      <HashRouter>
+        <AppShell />
+      </HashRouter>
+    </AppProvider>
   )
 }

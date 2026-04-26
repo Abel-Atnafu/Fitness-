@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect, useRef } from 'react'
 import { format } from 'date-fns'
 import { api } from '../api/client.js'
+import { rememberAccount } from '../utils/knownAccounts.js'
 
 const AppContext = createContext(null)
 const todayKey = format(new Date(), 'yyyy-MM-dd')
@@ -93,7 +94,7 @@ export function AppProvider({ children }) {
     }
   }
 
-  async function login(email, password) {
+  async function login(email, password, remember = true) {
     setAuthLoading(true)
     setError(null)
     try {
@@ -101,6 +102,7 @@ export function AppProvider({ children }) {
       localStorage.setItem('fitethio-token', t)
       setUser(u)
       setToken(t)
+      if (remember) rememberAccount({ email: u.email, name: u.name })
     } catch (err) {
       setError(err.message)
       throw err
@@ -109,14 +111,15 @@ export function AppProvider({ children }) {
     }
   }
 
-  async function register(name, email, password) {
+  async function register(name, email, phone, password, remember = true) {
     setAuthLoading(true)
     setError(null)
     try {
-      const { token: t, user: u } = await api.post('/api/auth/register', { name, email, password })
+      const { token: t, user: u } = await api.post('/api/auth/register', { name, email, phone, password })
       localStorage.setItem('fitethio-token', t)
       setUser(u)
       setToken(t)
+      if (remember) rememberAccount({ email: u.email, name: u.name })
     } catch (err) {
       setError(err.message)
       throw err
@@ -125,20 +128,12 @@ export function AppProvider({ children }) {
     }
   }
 
-  async function googleLogin(accessToken) {
-    setAuthLoading(true)
-    setError(null)
-    try {
-      const { token: t, user: u } = await api.post('/api/auth/google', { access_token: accessToken })
-      localStorage.setItem('fitethio-token', t)
-      setUser(u)
-      setToken(t)
-    } catch (err) {
-      setError(err.message)
-      throw err
-    } finally {
-      setAuthLoading(false)
-    }
+  async function forgotPassword(email) {
+    await api.post('/api/auth/forgot-password', { email })
+  }
+
+  async function resetPassword(token, password) {
+    await api.post('/api/auth/reset-password', { token, password })
   }
 
   function logout() {
@@ -334,7 +329,7 @@ export function AppProvider({ children }) {
 
   return (
     <AppContext.Provider value={{
-      token, user, login, register, googleLogin, logout, authLoading,
+      token, user, login, register, forgotPassword, resetPassword, logout, authLoading,
       profile, todayLog, weightEntries, recentHistory, currentStreak,
       logFood, deleteFood, toggleMealEaten, logWater, decrementWater, logWeight,
       logExercise, deleteExercise,
