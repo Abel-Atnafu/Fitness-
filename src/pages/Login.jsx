@@ -357,6 +357,7 @@ function LoginView({
   showBack,
   authLoading,
   error,
+  clearError,
 }) {
   const [email, setEmail] = useState(initialEmail || '')
   const [password, setPassword] = useState('')
@@ -403,7 +404,7 @@ function LoginView({
           type="email"
           label="Email address"
           value={email}
-          onChange={v => setEmail(v.replace(/\s/g, ''))}
+          onChange={v => { setEmail(v.replace(/\s/g, '')); clearError?.() }}
           valid={emailValid}
           autoComplete="email"
           inputMode="email"
@@ -414,7 +415,7 @@ function LoginView({
           type={showPw ? 'text' : 'password'}
           label="Password"
           value={password}
-          onChange={setPassword}
+          onChange={v => { setPassword(v); clearError?.() }}
           rightIcon={showPw ? <EyeOff size={15} /> : <Eye size={15} />}
           onRightClick={() => setShowPw(s => !s)}
           autoComplete="current-password"
@@ -511,7 +512,7 @@ function WelcomeView({ accounts, onPick, onForget, onUseDifferent, onCreate }) {
 
 // ─── RegisterView ──────────────────────────────────────────────────────────
 
-function RegisterView({ onSubmit, onBack, authLoading, error }) {
+function RegisterView({ onSubmit, onBack, authLoading, error, clearError }) {
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [countryCode, setCountryCode] = useState('+251')
@@ -572,7 +573,7 @@ function RegisterView({ onSubmit, onBack, authLoading, error }) {
           type="text"
           label="Your name"
           value={name}
-          onChange={setName}
+          onChange={v => { setName(v); clearError?.() }}
           valid={nameValid}
           autoComplete="name"
           autoFocus
@@ -582,7 +583,7 @@ function RegisterView({ onSubmit, onBack, authLoading, error }) {
           type="email"
           label="Email address"
           value={email}
-          onChange={v => setEmail(v.replace(/\s/g, ''))}
+          onChange={v => { setEmail(v.replace(/\s/g, '')); clearError?.() }}
           valid={emailValid}
           autoComplete="email"
           inputMode="email"
@@ -1045,6 +1046,7 @@ export default function Login() {
                 showBack={accounts.length > 0}
                 authLoading={authLoading}
                 error={error}
+                clearError={() => setError(null)}
               />
             )}
             {view === 'register' && (
@@ -1054,6 +1056,7 @@ export default function Login() {
                 onBack={() => go(accounts.length > 0 ? 'welcome' : 'login')}
                 authLoading={authLoading}
                 error={error}
+                clearError={() => setError(null)}
               />
             )}
             {view === 'forgot' && (

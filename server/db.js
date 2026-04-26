@@ -34,7 +34,6 @@ export async function query(text, params = []) {
 
 export async function initDb() {
   if (initialized) return
-  initialized = true
   const stmts = [
     `CREATE TABLE IF NOT EXISTS users (
       id SERIAL PRIMARY KEY,
@@ -124,4 +123,5 @@ export async function initDb() {
   for (const stmt of stmts) {
     await sqlFn(stmt, [])
   }
+  initialized = true
 }
