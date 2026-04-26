@@ -34,14 +34,20 @@ URL routing in `server/db.js`:
 
 Vite proxies `/api/*` → `http://localhost:3001` so the frontend always calls relative `/api/` URLs.
 
-**Google OAuth (optional)** — Sign-in with Google requires:
+**Email (optional)** — Password-reset emails are sent via Resend. The backend
+calls Resend's REST API directly (no SDK), so only env vars are required:
 ```
-VITE_GOOGLE_CLIENT_ID=...apps.googleusercontent.com   # exposed in frontend bundle (public)
-GOOGLE_CLIENT_ID=...apps.googleusercontent.com        # backend, must match — used to verify token audience
+RESEND_API_KEY=re_...                         # https://resend.com/api-keys
+RESEND_FROM=FitEthio <noreply@yourdomain>     # optional, defaults to onboarding@resend.dev
+PUBLIC_BASE_URL=https://your.app              # optional, used to build reset link; falls back to request host
 ```
-Both should hold the same OAuth 2.0 Web App Client ID from console.cloud.google.com (no Client Secret needed — backend verifies access tokens via Google's `tokeninfo`/`userinfo` endpoints in the implicit flow). Authorized JS origins must include your Vite dev URL (`http://localhost:5173`) and prod URL. Without these, the "Continue with Google" button shows a "not configured" notice.
+With `RESEND_API_KEY` unset (local dev), the reset URL is logged to the server
+console as `[mailer-dev] Reset link for {email}: {url}` so you can click it
+locally without configuring anything.
 
-**Vercel production** — set `DATABASE_URL`, `JWT_SECRET`, and (optionally) `VITE_GOOGLE_CLIENT_ID` + `GOOGLE_CLIENT_ID` in Vercel → Settings → Environment Variables.
+**Vercel production** — set `DATABASE_URL`, `JWT_SECRET`, and (for email)
+`RESEND_API_KEY`, `RESEND_FROM`, `PUBLIC_BASE_URL` in
+Vercel → Settings → Environment Variables.
 
 ## Architecture
 
@@ -58,7 +64,9 @@ The Express app is intentionally split into three files:
 
 PostgreSQL via Neon (serverless HTTP transport). All parameterised queries use `$1, $2, ...` placeholders. No ORM.
 
-Tables: `users`, `profiles`, `food_entries`, `meals_eaten`, `water_logs`, `weight_entries`.
+Tables: `users`, `profiles`, `food_entries`, `meals_eaten`, `water_logs`, `weight_entries`, `exercise_entries`, `password_reset_tokens`.
+
+`users` carries `phone`, `failed_login_count`, `locked_until` for signup phone capture and the 5-strike / 15-minute account lockout enforced in `POST /api/auth/login`.
 
 ### Auth
 JWT stored in `localStorage` under key `fitethio-token` (30-day expiry). Every API request attaches it as `Authorization: Bearer <token>`. The `authenticate` middleware in `server/middleware/auth.js` verifies it and sets `req.user = { userId, name, email }`.
