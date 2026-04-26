@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Search, Plus, Check, ShieldAlert, ChevronDown, X, PenLine } from 'lucide-react'
+import { Search, Plus, Check, ShieldAlert, ChevronDown, PenLine } from 'lucide-react'
 import { FOOD_DATABASE, FOOD_CATEGORIES } from '../../data/foodDatabase'
 import { useApp } from '../../context/AppContext'
 import { isAllowed } from '../../utils/dietary'
