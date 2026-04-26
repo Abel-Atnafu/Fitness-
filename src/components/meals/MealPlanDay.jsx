@@ -7,7 +7,7 @@ import { getConflicts } from '../../utils/dietary'
 const todayIndex = new Date().getDay() === 0 ? 6 : new Date().getDay() - 1
 
 export function MealPlanDay() {
-  const { activeMealPlanDay, setActiveMealPlanDay, mealSwapIndices, profile } = useApp()
+  const { activeMealPlanDay, setActiveMealPlanDay, mealSwapIndices, weekBaseIndices, profile } = useApp()
   const plan = MEAL_PLANS[activeMealPlanDay]
   const prefs = {
     allergies: profile?.allergies ?? [],
@@ -88,7 +88,7 @@ export function MealPlanDay() {
           const allowedPool = fullPool.filter(m => getConflicts(m, prefs).length === 0)
           const pool = allowedPool.length > 0 ? allowedPool : fullPool
           const swapKey = `${activeMealPlanDay}-${slot}`
-          const swapIdx = mealSwapIndices[swapKey] ?? 0
+          const swapIdx = (weekBaseIndices[swapKey] ?? 0) + (mealSwapIndices[swapKey] ?? 0)
           const { alternates: _dropped, ...meal } = pool[swapIdx % pool.length]
           const conflicts = getConflicts(meal, prefs)
           return (
