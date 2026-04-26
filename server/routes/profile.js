@@ -13,20 +13,23 @@ const ACTIVITY_MULTIPLIERS = {
   extreme: 1.9,
 }
 
-const GOAL_DELTAS = {
-  lose: -500,
-  maintain: 0,
-  gain: 300,
-}
-
 // Mifflin-St Jeor with sex branch, activity-adjusted TDEE, goal-based deficit,
 // and a calorie floor to discourage dangerous restriction.
-function calcTarget({ age, heightCm, weightKg, sex, activityLevel, goalType }) {
-  // Sex constant: +5 (male), -161 (female), -78 (unspecified avg).
+function calcTarget({ age, heightCm, weightKg, sex, activityLevel, goalType, weeklyRateKg }) {
   const sexConstant = sex === 'female' ? -161 : sex === 'male' ? 5 : -78
   const bmr = 10 * weightKg + 6.25 * heightCm - 5 * age + sexConstant
   const tdee = bmr * (ACTIVITY_MULTIPLIERS[activityLevel] ?? 1.2)
-  const target = Math.round(tdee + (GOAL_DELTAS[goalType] ?? -500))
+  let goalDelta
+  if (goalType === 'lose') {
+    // 1 kg fat ≈ 7700 kcal; weekly rate → daily deficit
+    const rate = weeklyRateKg ?? 0.5
+    goalDelta = -Math.round(rate * 7700 / 7)
+  } else if (goalType === 'gain') {
+    goalDelta = 300
+  } else {
+    goalDelta = 0
+  }
+  const target = Math.round(tdee + goalDelta)
   const floor = sex === 'female' ? 1200 : 1500
   return Math.max(target, floor)
 }
@@ -51,7 +54,7 @@ profileRoutes.put('/', async (req, res) => {
   try {
     const {
       name, age, height_cm, current_weight_kg, goal_weight_kg,
-      sex, activity_level, goal_type, dietary_preferences, allergies,
+      sex, activity_level, goal_type, dietary_preferences, allergies, weekly_rate_kg,
     } = req.body
 
     const { rows } = await query('SELECT * FROM profiles WHERE user_id = $1', [req.user.userId])
@@ -68,6 +71,7 @@ profileRoutes.put('/', async (req, res) => {
       goalType: goal_type ?? cur.goal_type ?? 'lose',
       dietaryPreferences: dietary_preferences ?? cur.dietary_preferences ?? [],
       allergies: allergies ?? cur.allergies ?? [],
+      weeklyRateKg: weekly_rate_kg ?? cur.weekly_rate_kg ?? 0.5,
     }
     const target = calcTarget(merged)
 
@@ -75,12 +79,12 @@ profileRoutes.put('/', async (req, res) => {
       `UPDATE profiles SET
          age=$1, height_cm=$2, current_weight_kg=$3, goal_weight_kg=$4,
          daily_calorie_target=$5, sex=$6, activity_level=$7, goal_type=$8,
-         dietary_preferences=$9, allergies=$10
-       WHERE user_id=$11`,
+         dietary_preferences=$9, allergies=$10, weekly_rate_kg=$11
+       WHERE user_id=$12`,
       [
         merged.age, merged.heightCm, merged.weightKg, merged.goalWeightKg,
         target, merged.sex, merged.activityLevel, merged.goalType,
-        merged.dietaryPreferences, merged.allergies,
+        merged.dietaryPreferences, merged.allergies, merged.weeklyRateKg,
         req.user.userId,
       ]
     )

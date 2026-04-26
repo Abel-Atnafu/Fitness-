@@ -72,6 +72,7 @@ export function AppProvider({ children }) {
         sex: prof.sex ?? null,
         activityLevel: prof.activity_level ?? 'sedentary',
         goalType: prof.goal_type ?? 'lose',
+        weeklyRateKg: prof.weekly_rate_kg ?? 0.5,
         dietaryPreferences: prof.dietary_preferences ?? [],
         allergies: prof.allergies ?? [],
       })
@@ -283,6 +284,7 @@ export function AppProvider({ children }) {
       if (data.goalType !== undefined) payload.goal_type = data.goalType
       if (data.dietaryPreferences !== undefined) payload.dietary_preferences = data.dietaryPreferences
       if (data.allergies !== undefined) payload.allergies = data.allergies
+      if (data.weeklyRateKg !== undefined) payload.weekly_rate_kg = data.weeklyRateKg
       const result = await api.put('/api/profile', payload)
       setProfile(prev => ({ ...prev, ...data, dailyCalorieTarget: result.daily_calorie_target }))
     } catch (err) {

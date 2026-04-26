@@ -57,6 +57,7 @@ export async function initDb() {
       allergies TEXT[] DEFAULT '{}'
     )`,
     `ALTER TABLE profiles ADD COLUMN IF NOT EXISTS sex TEXT`,
+    `ALTER TABLE profiles ADD COLUMN IF NOT EXISTS weekly_rate_kg REAL DEFAULT 0.5`,
     `ALTER TABLE profiles ADD COLUMN IF NOT EXISTS activity_level TEXT DEFAULT 'sedentary'`,
     `ALTER TABLE profiles ADD COLUMN IF NOT EXISTS goal_type TEXT DEFAULT 'lose'`,
     `ALTER TABLE profiles ADD COLUMN IF NOT EXISTS dietary_preferences TEXT[] DEFAULT '{}'`,
