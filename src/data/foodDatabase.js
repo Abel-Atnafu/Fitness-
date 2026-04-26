@@ -356,6 +356,27 @@ export const FOOD_DATABASE = [
   { id: 'f348', name: 'Magnesium Glycinate (2 capsules)', category: 'Supplement', calories: 5, protein: 0, carbs: 0, fat: 0, emoji: '💊' },
   { id: 'f349', name: 'Beta-Alanine (3.2g)', category: 'Supplement', calories: 10, protein: 0, carbs: 0, fat: 0, emoji: '⚡' },
   { id: 'f350', name: 'Citrulline Malate (6g)', category: 'Supplement', calories: 15, protein: 0, carbs: 4, fat: 0, emoji: '⚡' },
+  // ─── Breakfast & Cereal ──────────────────────────────────────────
+  { id: 'f351', name: 'Cornflakes (1 cup)', category: 'Breakfast', calories: 101, protein: 2, carbs: 24, fat: 0.2, emoji: '🌾' },
+  { id: 'f352', name: 'Cornflakes with Milk (1 bowl)', category: 'Breakfast', calories: 201, protein: 8, carbs: 36, fat: 4, emoji: '🥣' },
+  { id: 'f353', name: 'Granola (50g)', category: 'Breakfast', calories: 224, protein: 5, carbs: 34, fat: 8, emoji: '🌾' },
+  { id: 'f354', name: 'Granola with Milk (1 bowl)', category: 'Breakfast', calories: 340, protein: 11, carbs: 50, fat: 10, emoji: '🥣' },
+  { id: 'f355', name: 'Muesli (50g)', category: 'Breakfast', calories: 185, protein: 6, carbs: 32, fat: 4, emoji: '🌾' },
+  { id: 'f356', name: 'Muesli with Milk (1 bowl)', category: 'Breakfast', calories: 290, protein: 12, carbs: 44, fat: 7, emoji: '🥣' },
+  { id: 'f357', name: 'Frosted Flakes (1 cup)', category: 'Breakfast', calories: 130, protein: 1.5, carbs: 32, fat: 0.1, emoji: '🌾' },
+  { id: 'f358', name: 'Cheerios (1 cup)', category: 'Breakfast', calories: 100, protein: 3, carbs: 20, fat: 2, emoji: '⭕' },
+  { id: 'f359', name: 'Honey Nut Cheerios (1 cup)', category: 'Breakfast', calories: 140, protein: 3, carbs: 29, fat: 2, emoji: '⭕' },
+  { id: 'f360', name: 'Bran Flakes (1 cup)', category: 'Breakfast', calories: 127, protein: 4, carbs: 31, fat: 1, emoji: '🌾' },
+  { id: 'f361', name: 'Coco Pops / Choco Krispies (1 cup)', category: 'Breakfast', calories: 120, protein: 1.5, carbs: 27, fat: 1, emoji: '🍫' },
+  { id: 'f362', name: 'Rice Krispies (1 cup)', category: 'Breakfast', calories: 96, protein: 2, carbs: 22, fat: 0.2, emoji: '🌾' },
+  { id: 'f363', name: 'Special K (1 cup)', category: 'Breakfast', calories: 117, protein: 6, carbs: 22, fat: 0.5, emoji: '🌾' },
+  { id: 'f364', name: 'Shredded Wheat (2 biscuits)', category: 'Breakfast', calories: 154, protein: 5, carbs: 34, fat: 1, emoji: '🌾' },
+  { id: 'f365', name: 'Porridge / Oatmeal (1 bowl, plain)', category: 'Breakfast', calories: 150, protein: 5, carbs: 27, fat: 3, emoji: '🥣' },
+  { id: 'f366', name: 'Weetabix (2 biscuits)', category: 'Breakfast', calories: 136, protein: 5, carbs: 27, fat: 1, emoji: '🌾' },
+  { id: 'f367', name: 'Overnight Oats (1 jar)', category: 'Breakfast', calories: 300, protein: 12, carbs: 48, fat: 7, emoji: '🥣' },
+  { id: 'f368', name: 'Acai Bowl (1 serving)', category: 'Breakfast', calories: 380, protein: 8, carbs: 58, fat: 12, emoji: '🫐' },
+  { id: 'f369', name: 'Breakfast Burrito (1)', category: 'Breakfast', calories: 470, protein: 22, carbs: 44, fat: 22, emoji: '🌯' },
+  { id: 'f370', name: 'Eggs Benedict (1 serving)', category: 'Breakfast', calories: 500, protein: 22, carbs: 28, fat: 32, emoji: '🍳' },
 ]
 
-export const FOOD_CATEGORIES = ['All', 'Ethiopian', 'Foreign', 'Fruits & Veg', 'Snacks', 'Drink', 'Supplement']
+export const FOOD_CATEGORIES = ['All', 'Ethiopian', 'Foreign', 'Breakfast', 'Fruits & Veg', 'Snacks', 'Drink', 'Supplement']
