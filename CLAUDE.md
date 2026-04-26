@@ -19,11 +19,19 @@ No test suite exists in this project.
 
 ## Environment Variables
 
-**Local dev** — create a `.env` file in the root (loaded by Express via `process.env`):
+**Local dev** — no `.env` required. With `DATABASE_URL` unset, `server/db.js`
+boots an embedded PGlite (Postgres in WASM) at `./.local-db/` and `JWT_SECRET`
+falls back to a hardcoded dev value. Just `npm install && npm run dev`.
+
+To use a real Postgres locally, create a `.env`:
 ```
-DATABASE_URL=postgresql://...   # Neon connection string
+DATABASE_URL=postgresql://...   # Neon URL, or anything localhost
 JWT_SECRET=any-random-string
 ```
+URL routing in `server/db.js`:
+- unset / `local` / `pglite:<path>` → embedded PGlite (devDependency)
+- anything else → `@neondatabase/serverless` HTTP driver
+
 Vite proxies `/api/*` → `http://localhost:3001` so the frontend always calls relative `/api/` URLs.
 
 **Vercel production** — set `DATABASE_URL` and `JWT_SECRET` in Vercel → Settings → Environment Variables.
