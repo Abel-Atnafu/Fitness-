@@ -43,6 +43,8 @@ export async function initDb() {
       name TEXT NOT NULL,
       created_at TIMESTAMPTZ DEFAULT NOW()
     )`,
+    `ALTER TABLE users ADD COLUMN IF NOT EXISTS google_id TEXT UNIQUE`,
+    `ALTER TABLE users ALTER COLUMN password_hash DROP NOT NULL`,
     `CREATE TABLE IF NOT EXISTS profiles (
       user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
       age INTEGER DEFAULT 22,

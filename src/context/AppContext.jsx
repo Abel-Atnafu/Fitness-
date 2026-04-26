@@ -125,6 +125,22 @@ export function AppProvider({ children }) {
     }
   }
 
+  async function googleLogin(accessToken) {
+    setAuthLoading(true)
+    setError(null)
+    try {
+      const { token: t, user: u } = await api.post('/api/auth/google', { access_token: accessToken })
+      localStorage.setItem('fitethio-token', t)
+      setUser(u)
+      setToken(t)
+    } catch (err) {
+      setError(err.message)
+      throw err
+    } finally {
+      setAuthLoading(false)
+    }
+  }
+
   function logout() {
     localStorage.removeItem('fitethio-token')
     setToken(null)
@@ -318,7 +334,7 @@ export function AppProvider({ children }) {
 
   return (
     <AppContext.Provider value={{
-      token, user, login, register, logout, authLoading,
+      token, user, login, register, googleLogin, logout, authLoading,
       profile, todayLog, weightEntries, recentHistory, currentStreak,
       logFood, deleteFood, toggleMealEaten, logWater, decrementWater, logWeight,
       logExercise, deleteExercise,
