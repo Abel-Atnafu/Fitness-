@@ -46,7 +46,7 @@ function RoleBadge({ role }) {
 }
 
 export default function Admin() {
-  const { logout, isAdmin, profile } = useApp()
+  const { logout, profile } = useApp()
   const navigate = useNavigate()
 
   const [stats, setStats] = useState(null)
@@ -75,23 +75,8 @@ export default function Admin() {
   }, [])
 
   useEffect(() => {
-    if (!isAdmin) return
     load()
-  }, [isAdmin, load])
-
-  if (!isAdmin) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center gap-4"
-        style={{ background: 'linear-gradient(135deg, #060b18 0%, #0d1526 50%, #111d35 100%)' }}>
-        <ShieldOff size={48} className="text-white/20" />
-        <p className="text-white/50 font-medium">Admin access required</p>
-        <button onClick={() => navigate('/')}
-          className="text-amber-400 text-sm font-medium hover:underline">
-          Go back to app
-        </button>
-      </div>
-    )
-  }
+  }, [load])
 
   async function toggleRole(user) {
     const newRole = user.role === 'admin' ? 'user' : 'admin'

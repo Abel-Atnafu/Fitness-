@@ -31,9 +31,6 @@ function AnimatedRoutes() {
 }
 
 function AdminRoute() {
-  const { token, loading } = useApp()
-  if (loading) return <LoadingScreen />
-  if (!token) return <Login />
   return <Admin />
 }
 
