@@ -38,10 +38,10 @@ profileRoutes.get('/', async (req, res) => {
   try {
     const [pr, ur] = await Promise.all([
       query('SELECT * FROM profiles WHERE user_id = $1', [req.user.userId]),
-      query('SELECT id, name, email FROM users WHERE id = $1', [req.user.userId]),
+      query('SELECT id, name, email, role FROM users WHERE id = $1', [req.user.userId]),
     ])
     if (!pr.rows[0] || !ur.rows[0]) return res.status(404).json({ error: 'Profile not found' })
-    res.json({ ...pr.rows[0], name: ur.rows[0].name, email: ur.rows[0].email })
+    res.json({ ...pr.rows[0], name: ur.rows[0].name, email: ur.rows[0].email, role: ur.rows[0].role ?? 'user' })
   } catch (err) {
     console.error(err)
     res.status(500).json({ error: 'Server error' })

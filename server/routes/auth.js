@@ -48,17 +48,18 @@ authRoutes.post('/register', async (req, res) => {
   try {
     const hash = await bcrypt.hash(password, 10)
     const { rows } = await query(
-      'INSERT INTO users (email, password_hash, name, phone) VALUES ($1, $2, $3, $4) RETURNING id',
+      'INSERT INTO users (email, password_hash, name, phone) VALUES ($1, $2, $3, $4) RETURNING id, role',
       [email.toLowerCase().trim(), hash, name.trim(), normalizedPhone]
     )
     const userId = rows[0].id
+    const role = rows[0].role ?? 'user'
     await query('INSERT INTO profiles (user_id) VALUES ($1)', [userId])
     const token = jwt.sign(
-      { userId, name: name.trim(), email: email.toLowerCase().trim() },
+      { userId, name: name.trim(), email: email.toLowerCase().trim(), role },
       JWT_SECRET,
       { expiresIn: '30d' }
     )
-    res.status(201).json({ token, user: { id: userId, name: name.trim(), email: email.toLowerCase().trim() } })
+    res.status(201).json({ token, user: { id: userId, name: name.trim(), email: email.toLowerCase().trim(), role } })
   } catch (err) {
     if (err.message?.includes('unique') || err.message?.includes('duplicate')) {
       return res.status(409).json({ error: 'An account with this email already exists' })
@@ -117,11 +118,11 @@ authRoutes.post('/login', async (req, res) => {
     }
 
     const token = jwt.sign(
-      { userId: user.id, name: user.name, email: user.email },
+      { userId: user.id, name: user.name, email: user.email, role: user.role ?? 'user' },
       JWT_SECRET,
       { expiresIn: '30d' }
     )
-    res.json({ token, user: { id: user.id, name: user.name, email: user.email } })
+    res.json({ token, user: { id: user.id, name: user.name, email: user.email, role: user.role ?? 'user' } })
   } catch (err) {
     console.error(err)
     res.status(500).json({ error: 'Server error' })

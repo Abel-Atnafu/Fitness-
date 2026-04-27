@@ -125,6 +125,7 @@ export function AppProvider({ children }) {
         weeklyRateKg: prof.weekly_rate_kg ?? 0.5,
         dietaryPreferences: prof.dietary_preferences ?? [],
         allergies: prof.allergies ?? [],
+        role: prof.role ?? 'user',
       })
       setTodayLog({
         foodEntries: log.foodEntries,
@@ -375,6 +376,7 @@ export function AppProvider({ children }) {
   const calorieDeficit = (profile?.dailyCalorieTarget ?? 1900) - todayCalories + todayCaloriesBurned
   const bmi = profile ? +(profile.currentWeightKg / ((profile.heightCm / 100) ** 2)).toFixed(1) : 0
   const mealsCompletedToday = Object.values(todayLog.mealsEaten ?? {}).filter(Boolean).length
+  const isAdmin = profile?.role === 'admin'
 
   return (
     <AppContext.Provider value={{
@@ -385,7 +387,7 @@ export function AppProvider({ children }) {
       updateProfile, resetData,
       activeMealPlanDay, setActiveMealPlanDay, mealSwapIndices, weekBaseIndices, swapMeal,
       loading, error, setError, todayKey,
-      todayCalories, todayCaloriesBurned, calorieDeficit, bmi, mealsCompletedToday,
+      todayCalories, todayCaloriesBurned, calorieDeficit, bmi, mealsCompletedToday, isAdmin,
     }}>
       {children}
     </AppContext.Provider>
