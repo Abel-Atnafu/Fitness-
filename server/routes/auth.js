@@ -2,8 +2,9 @@ import { Router } from 'express'
 import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken'
 import crypto from 'crypto'
+import rateLimit from 'express-rate-limit'
 import { query } from '../db.js'
-import { JWT_SECRET } from '../middleware/auth.js'
+import { JWT_SECRET, authenticate } from '../middleware/auth.js'
 import { sendPasswordResetEmail } from '../lib/mailer.js'
 
 export const authRoutes = Router()
@@ -12,6 +13,23 @@ const PHONE_RE = /^\+?[0-9]{7,15}$/
 const MAX_FAILED_ATTEMPTS = 5
 const LOCKOUT_MINUTES = 15
 const RESET_TOKEN_TTL_MS = 30 * 60 * 1000
+
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many requests, please try again later.' },
+})
+
+function cookieOpts() {
+  return {
+    httpOnly: true,
+    secure: !!process.env.VERCEL,
+    sameSite: 'lax',
+    maxAge: 30 * 24 * 60 * 60 * 1000,
+  }
+}
 
 function normalizePhone(raw) {
   if (typeof raw !== 'string') return ''
@@ -24,13 +42,12 @@ function hashToken(token) {
 
 function publicBaseUrl(req) {
   if (process.env.PUBLIC_BASE_URL) return process.env.PUBLIC_BASE_URL.replace(/\/$/, '')
-  // Vercel sets x-forwarded-host / proto; fall back to req.headers.host for local
   const proto = req.headers['x-forwarded-proto'] || (req.secure ? 'https' : 'http')
   const host = req.headers['x-forwarded-host'] || req.headers.host
   return `${proto}://${host}`
 }
 
-authRoutes.post('/register', async (req, res) => {
+authRoutes.post('/register', authLimiter, async (req, res) => {
   const { name, email, password, phone } = req.body
   if (!name?.trim() || !email?.trim() || !password) {
     return res.status(400).json({ error: 'Name, email, and password are required' })
@@ -42,8 +59,8 @@ authRoutes.post('/register', async (req, res) => {
   if (!PHONE_RE.test(normalizedPhone)) {
     return res.status(400).json({ error: 'Enter a valid phone number (7–15 digits, optional + prefix)' })
   }
-  if (password.length < 6) {
-    return res.status(400).json({ error: 'Password must be at least 6 characters' })
+  if (password.length < 8) {
+    return res.status(400).json({ error: 'Password must be at least 8 characters' })
   }
   try {
     const hash = await bcrypt.hash(password, 10)
@@ -58,7 +75,8 @@ authRoutes.post('/register', async (req, res) => {
       JWT_SECRET,
       { expiresIn: '30d' }
     )
-    res.status(201).json({ token, user: { id: userId, name: name.trim(), email: email.toLowerCase().trim() } })
+    res.cookie('fitethio_token', token, cookieOpts())
+    res.status(201).json({ user: { id: userId, name: name.trim(), email: email.toLowerCase().trim() } })
   } catch (err) {
     if (err.message?.includes('unique') || err.message?.includes('duplicate')) {
       return res.status(409).json({ error: 'An account with this email already exists' })
@@ -68,7 +86,7 @@ authRoutes.post('/register', async (req, res) => {
   }
 })
 
-authRoutes.post('/login', async (req, res) => {
+authRoutes.post('/login', authLimiter, async (req, res) => {
   const { email, password } = req.body
   if (!email || !password) return res.status(400).json({ error: 'Email and password are required' })
   try {
@@ -121,16 +139,36 @@ authRoutes.post('/login', async (req, res) => {
       JWT_SECRET,
       { expiresIn: '30d' }
     )
-    res.json({ token, user: { id: user.id, name: user.name, email: user.email } })
+    res.cookie('fitethio_token', token, cookieOpts())
+    res.json({ user: { id: user.id, name: user.name, email: user.email } })
   } catch (err) {
     console.error(err)
     res.status(500).json({ error: 'Server error' })
   }
 })
 
-authRoutes.post('/forgot-password', async (req, res) => {
+authRoutes.post('/logout', (req, res) => {
+  res.clearCookie('fitethio_token', { httpOnly: true, secure: !!process.env.VERCEL, sameSite: 'lax' })
+  res.json({ ok: true })
+})
+
+authRoutes.get('/me', authenticate, async (req, res) => {
+  try {
+    const { rows } = await query(
+      'SELECT id, name, email FROM users WHERE id = $1',
+      [req.user.userId]
+    )
+    if (!rows[0]) return res.status(401).json({ error: 'User not found' })
+    const u = rows[0]
+    res.json({ id: u.id, name: u.name, email: u.email })
+  } catch (err) {
+    console.error('[me]', err)
+    res.status(500).json({ error: 'Server error' })
+  }
+})
+
+authRoutes.post('/forgot-password', authLimiter, async (req, res) => {
   const { email } = req.body
-  // Always return ok to avoid leaking which emails are registered.
   if (!email || typeof email !== 'string') return res.json({ ok: true })
 
   try {
@@ -141,7 +179,6 @@ authRoutes.post('/forgot-password', async (req, res) => {
     const user = rows[0]
     if (!user) return res.json({ ok: true })
 
-    // Invalidate any prior unused tokens for this user — only one live link at a time.
     await query(
       'DELETE FROM password_reset_tokens WHERE user_id = $1 AND used = FALSE',
       [user.id]
@@ -163,24 +200,22 @@ authRoutes.post('/forgot-password', async (req, res) => {
       await sendPasswordResetEmail({ to: user.email, name: user.name, resetUrl })
     } catch (err) {
       console.error('[forgot-password] mail send failed:', err)
-      // Do not surface mail failures to the caller — we already responded ok semantics.
     }
 
     return res.json({ ok: true })
   } catch (err) {
     console.error('[forgot-password]', err)
-    // Even on internal errors, don't leak — but signal a non-fatal generic failure.
     return res.json({ ok: true })
   }
 })
 
-authRoutes.post('/reset-password', async (req, res) => {
+authRoutes.post('/reset-password', authLimiter, async (req, res) => {
   const { token, password } = req.body
   if (!token || !password) {
     return res.status(400).json({ error: 'Token and new password are required' })
   }
-  if (password.length < 6) {
-    return res.status(400).json({ error: 'Password must be at least 6 characters' })
+  if (password.length < 8) {
+    return res.status(400).json({ error: 'Password must be at least 8 characters' })
   }
   try {
     const tokenHash = hashToken(token)
@@ -205,7 +240,6 @@ authRoutes.post('/reset-password', async (req, res) => {
       'UPDATE password_reset_tokens SET used = TRUE WHERE id = $1',
       [record.id]
     )
-    // Invalidate any other live tokens for this user.
     await query(
       'DELETE FROM password_reset_tokens WHERE user_id = $1 AND used = FALSE',
       [record.user_id]

@@ -50,7 +50,6 @@ function calcStreak(history) {
 }
 
 export function AppProvider({ children }) {
-  const [token, setToken] = useState(() => localStorage.getItem('fitethio-token'))
   const [user, setUser] = useState(null)
   const [profile, setProfile] = useState(null)
   const [todayLog, setTodayLog] = useState({ foodEntries: [], exerciseEntries: [], waterGlasses: 0, mealsEaten: {} })
@@ -66,11 +65,9 @@ export function AppProvider({ children }) {
   const [authLoading, setAuthLoading] = useState(false)
   const [error, setError] = useState(null)
 
-  // Bug 8 fix: always-current profile ref for logWeight
   const profileRef = useRef(profile)
   useEffect(() => { profileRef.current = profile }, [profile])
 
-  // Regenerate meal plan when the ISO week rolls over (detected on window focus)
   useEffect(() => {
     function checkWeek() {
       const { week, year } = getISOWeek(new Date())
@@ -87,7 +84,6 @@ export function AppProvider({ children }) {
     return () => window.removeEventListener('focus', checkWeek)
   }, [])
 
-  // Bug 7 fix: debounced water sync to avoid race on rapid taps
   const waterSyncTimer = useRef(null)
   function syncWater(glasses) {
     clearTimeout(waterSyncTimer.current)
@@ -96,10 +92,17 @@ export function AppProvider({ children }) {
     }, 400)
   }
 
+  // On mount: check for a valid session cookie via /api/auth/me
   useEffect(() => {
-    if (!token) { setLoading(false); return }
-    loadAllData()
-  }, [token])
+    api.get('/api/auth/me')
+      .then(u => {
+        setUser(u)
+        loadAllData()
+      })
+      .catch(() => {
+        setLoading(false)
+      })
+  }, [])
 
   async function loadAllData() {
     setLoading(true)
@@ -147,11 +150,10 @@ export function AppProvider({ children }) {
     setAuthLoading(true)
     setError(null)
     try {
-      const { token: t, user: u } = await api.post('/api/auth/login', { email, password })
-      localStorage.setItem('fitethio-token', t)
+      const { user: u } = await api.post('/api/auth/login', { email, password })
       setUser(u)
-      setToken(t)
       if (remember) rememberAccount({ email: u.email, name: u.name })
+      loadAllData()
     } catch (err) {
       setError(err.message)
       throw err
@@ -164,11 +166,10 @@ export function AppProvider({ children }) {
     setAuthLoading(true)
     setError(null)
     try {
-      const { token: t, user: u } = await api.post('/api/auth/register', { name, email, phone, password })
-      localStorage.setItem('fitethio-token', t)
+      const { user: u } = await api.post('/api/auth/register', { name, email, phone, password })
       setUser(u)
-      setToken(t)
       if (remember) rememberAccount({ email: u.email, name: u.name })
+      loadAllData()
     } catch (err) {
       setError(err.message)
       throw err
@@ -186,8 +187,7 @@ export function AppProvider({ children }) {
   }
 
   function logout() {
-    localStorage.removeItem('fitethio-token')
-    setToken(null)
+    api.post('/api/auth/logout', {}).catch(() => {})
     setUser(null)
     setProfile(null)
     setTodayLog({ foodEntries: [], exerciseEntries: [], waterGlasses: 0, mealsEaten: {} })
@@ -198,7 +198,6 @@ export function AppProvider({ children }) {
   }
 
   async function logFood(food) {
-    // Bug 4 fix: use crypto.randomUUID() to avoid rare same-ms collisions
     const optimisticId = crypto.randomUUID()
     const optimistic = { id: optimisticId, ...food, time: new Date().toISOString() }
     setTodayLog(prev => ({ ...prev, foodEntries: [...prev.foodEntries, optimistic] }))
@@ -217,7 +216,6 @@ export function AppProvider({ children }) {
         ...prev,
         foodEntries: prev.foodEntries.map(e => e.id === optimisticId ? entry : e),
       }))
-      // Bug 6 fix: update recentHistory for today and recalculate streak
       setRecentHistory(prev => {
         const existing = prev.find(h => h.date === todayKey)
         const newCalories = (existing?.totalCalories ?? 0) + (entry.calories ?? 0)
@@ -239,7 +237,6 @@ export function AppProvider({ children }) {
     setTodayLog(prev => ({ ...prev, foodEntries: prev.foodEntries.filter(e => e.id !== id) }))
     try {
       await api.delete(`/api/logs/food/${id}`)
-      // Update recentHistory for today when deleting food
       if (removed) {
         setRecentHistory(prev => {
           const updated = prev.map(h =>
@@ -294,7 +291,6 @@ export function AppProvider({ children }) {
     }
   }
 
-  // Bug 7 fix: logWater increments, decrementWater decrements, both debounce the API call
   async function logWater() {
     const glasses = Math.min((todayLog.waterGlasses ?? 0) + 1, 12)
     setTodayLog(prev => ({ ...prev, waterGlasses: glasses }))
@@ -315,7 +311,6 @@ export function AppProvider({ children }) {
     setProfile(prev => ({ ...prev, currentWeightKg: weight_kg }))
     try {
       await api.post('/api/weight', { date: todayKey, weight_kg })
-      // Bug 8 fix: read from profileRef to avoid stale closure
       const p = profileRef.current
       const result = await api.put('/api/profile', {
         name: p?.name,
@@ -378,7 +373,7 @@ export function AppProvider({ children }) {
 
   return (
     <AppContext.Provider value={{
-      token, user, login, register, forgotPassword, resetPassword, logout, authLoading,
+      user, login, register, forgotPassword, resetPassword, logout, authLoading,
       profile, todayLog, weightEntries, recentHistory, currentStreak,
       logFood, deleteFood, toggleMealEaten, logWater, decrementWater, logWeight,
       logExercise, deleteExercise,

@@ -1,13 +1,11 @@
 async function request(method, path, body) {
-  const token = localStorage.getItem('fitethio-token')
-
   let res
   try {
     res = await fetch(path, {
       method,
+      credentials: 'include',
       headers: {
         'Content-Type': 'application/json',
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
       ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
     })

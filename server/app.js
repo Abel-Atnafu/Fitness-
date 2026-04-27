@@ -1,5 +1,6 @@
 import express from 'express'
 import cors from 'cors'
+import cookieParser from 'cookie-parser'
 import { fileURLToPath } from 'url'
 import { dirname, join } from 'path'
 import { authRoutes } from './routes/auth.js'
@@ -20,7 +21,8 @@ app.use(cors({
   credentials: true,
 }))
 
-app.use(express.json())
+app.use(cookieParser())
+app.use(express.json({ limit: '10kb' }))
 
 // Serialize BigInt values from libsql as plain numbers
 app.set('json replacer', (_, v) => (typeof v === 'bigint' ? Number(v) : v))

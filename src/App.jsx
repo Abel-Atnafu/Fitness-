@@ -30,10 +30,10 @@ function AnimatedRoutes() {
 }
 
 function AppShell() {
-  const { token, loading, profile } = useApp()
+  const { user, loading, profile } = useApp()
 
   if (loading) return <LoadingScreen />
-  if (!token) return <Login />
+  if (!user) return <Login />
 
   return (
     <div className="min-h-screen relative" style={{ background: 'linear-gradient(135deg, #060b18 0%, #0d1526 50%, #111d35 100%)' }}>
