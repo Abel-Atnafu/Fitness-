@@ -12,6 +12,7 @@ import MealPlan from './pages/MealPlan'
 import FoodLog from './pages/FoodLog'
 import Progress from './pages/Progress'
 import Profile from './pages/Profile'
+import Admin from './pages/Admin'
 
 function AnimatedRoutes() {
   const location = useLocation()
@@ -27,6 +28,13 @@ function AnimatedRoutes() {
       </Routes>
     </AnimatePresence>
   )
+}
+
+function AdminRoute() {
+  const { token, loading } = useApp()
+  if (loading) return <LoadingScreen />
+  if (!token) return <Login />
+  return <Admin />
 }
 
 function AppShell() {
@@ -61,7 +69,10 @@ export default function App() {
   return (
     <AppProvider>
       <HashRouter>
-        <AppShell />
+        <Routes>
+          <Route path="/admin" element={<AdminRoute />} />
+          <Route path="*" element={<AppShell />} />
+        </Routes>
       </HashRouter>
     </AppProvider>
   )

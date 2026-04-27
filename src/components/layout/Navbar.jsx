@@ -1,6 +1,6 @@
 import { useLocation, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { LogOut } from 'lucide-react'
+import { LogOut, ShieldCheck } from 'lucide-react'
 import { format } from 'date-fns'
 import { useApp } from '../../context/AppContext'
 
@@ -15,7 +15,7 @@ const PAGE_TITLES = {
 export function Navbar() {
   const location = useLocation()
   const navigate = useNavigate()
-  const { profile, logout } = useApp()
+  const { profile, logout, isAdmin } = useApp()
   const title = PAGE_TITLES[location.pathname] || 'FitEthio'
 
   return (
@@ -35,8 +35,18 @@ export function Navbar() {
       {/* Page title */}
       <span className="font-display font-semibold text-white/80 text-sm absolute left-1/2 -translate-x-1/2">{title}</span>
 
-      {/* User + logout */}
+      {/* User + admin + logout */}
       <div className="flex items-center gap-2">
+        {isAdmin && (
+          <motion.button
+            whileTap={{ scale: 0.88 }}
+            onClick={() => navigate('/admin')}
+            title="Admin panel"
+            className="w-7 h-7 flex items-center justify-center rounded-xl"
+            style={{ background: 'rgba(245,158,11,0.15)', border: '1px solid rgba(245,158,11,0.3)' }}>
+            <ShieldCheck size={13} className="text-amber-400" />
+          </motion.button>
+        )}
         <div className="w-7 h-7 rounded-xl flex items-center justify-center font-display font-bold text-xs text-navy-950"
           style={{ background: 'linear-gradient(135deg, #d97706, #fbbf24)' }}>
           {profile?.name?.[0]?.toUpperCase() ?? 'A'}
