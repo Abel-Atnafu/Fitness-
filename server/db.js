@@ -1,39 +1,44 @@
-// Driver selection — happens once at module load:
-//   • DATABASE_URL unset / "local" / "pglite:..."  → embedded PGlite (zero-config local dev)
-//   • Anything else (e.g. a Neon HTTPS URL)        → Neon HTTP serverless driver
-//
-// PGlite is a devDependency, so production deploys (Vercel) only ship the
-// Neon path.
+// Driver selection — deferred until first use so module-level failures (e.g.
+// DATABASE_URL not set in Vercel, PGlite unavailable in production) are caught
+// inside initDb() / query() and surface as proper JSON error responses rather
+// than crashing the serverless function during import.
 
 const url = process.env.DATABASE_URL ?? ''
 const useLocal = !url || url === 'local' || url.startsWith('pglite:')
 
-let sqlFn
-if (useLocal) {
-  const { PGlite } = await import('@electric-sql/pglite')
-  const dataDir = url.startsWith('pglite:') ? url.slice('pglite:'.length) : './.local-db'
-  const db = new PGlite(dataDir)
-  await db.waitReady
-  console.log(`[db] using local PGlite at ${dataDir}`)
-  sqlFn = async (text, params = []) => {
-    const r = await db.query(text, params)
-    return r.rows
+let sqlFn = null
+
+async function getSqlFn() {
+  if (sqlFn) return sqlFn
+  if (useLocal) {
+    const { PGlite } = await import('@electric-sql/pglite')
+    const dataDir = url.startsWith('pglite:') ? url.slice('pglite:'.length) : './.local-db'
+    const db = new PGlite(dataDir)
+    await db.waitReady
+    console.log(`[db] using local PGlite at ${dataDir}`)
+    sqlFn = async (text, params = []) => {
+      const r = await db.query(text, params)
+      return r.rows
+    }
+  } else {
+    const { neon } = await import('@neondatabase/serverless')
+    const neonSql = neon(url)
+    sqlFn = async (text, params = []) => neonSql(text, params)
   }
-} else {
-  const { neon } = await import('@neondatabase/serverless')
-  const neonSql = neon(url)
-  sqlFn = async (text, params = []) => neonSql(text, params)
+  return sqlFn
 }
 
 let initialized = false
 
 export async function query(text, params = []) {
-  const rows = await sqlFn(text, params)
+  const fn = await getSqlFn()
+  const rows = await fn(text, params)
   return { rows }
 }
 
 export async function initDb() {
   if (initialized) return
+  const fn = await getSqlFn()
   const stmts = [
     `CREATE TABLE IF NOT EXISTS users (
       id SERIAL PRIMARY KEY,
@@ -122,7 +127,7 @@ export async function initDb() {
     )`,
   ]
   for (const stmt of stmts) {
-    await sqlFn(stmt, [])
+    await fn(stmt, [])
   }
   initialized = true
 }
