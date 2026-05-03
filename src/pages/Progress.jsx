@@ -5,6 +5,7 @@ import { TrendingDown, Trophy, Calendar, Scale, Target } from 'lucide-react'
 import { PageTransition } from '../components/ui/PageTransition'
 import { WeightChart } from '../components/progress/WeightChart'
 import { CalorieHistoryChart } from '../components/progress/CalorieHistoryChart'
+import { MacroTrendChart } from '../components/progress/MacroTrendChart'
 import { useApp } from '../context/AppContext'
 
 const MILESTONES = [92, 90, 87, 85, 83, 80]
@@ -48,6 +49,7 @@ export default function Progress() {
   const { weightEntries, profile, logWeight, todayKey } = useApp()
   const [weightInput, setWeightInput] = useState('')
   const [celebration, setCelebration] = useState(false)
+  const [calorieDays, setCalorieDays] = useState(7)
 
   const projection = getProjection(weightEntries, profile?.goalWeightKg ?? 80)
   const startWeight = weightEntries[0]?.weight ?? profile?.currentWeightKg ?? 95
@@ -172,16 +174,38 @@ export default function Progress() {
           )}
         </motion.div>
 
-        {/* 7-day calorie chart */}
+        {/* Calorie history with range toggle */}
         <div className="rounded-2xl p-4" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}>
           <div className="flex items-center justify-between mb-4">
-            <p className="text-white/30 text-[11px] uppercase tracking-widest font-semibold">7-Day Calories</p>
-            <div className="flex items-center gap-3 text-[10px] text-white/25">
-              <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-lime-500 inline-block" />Under</span>
-              <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-red-400 inline-block" />Over</span>
+            <p className="text-white/30 text-[11px] uppercase tracking-widest font-semibold">
+              {calorieDays}-Day Calories
+            </p>
+            <div className="flex items-center gap-1 p-0.5 rounded-lg" style={{ background: 'rgba(255,255,255,0.05)' }}>
+              {[7, 30, 90].map(d => (
+                <button
+                  key={d}
+                  onClick={() => setCalorieDays(d)}
+                  className="px-2.5 py-1 rounded-md text-[10px] font-bold transition-colors"
+                  style={{
+                    background: calorieDays === d ? 'rgba(251,191,36,0.18)' : 'transparent',
+                    color: calorieDays === d ? '#fbbf24' : 'rgba(255,255,255,0.4)',
+                  }}>
+                  {d}d
+                </button>
+              ))}
             </div>
           </div>
-          <CalorieHistoryChart />
+          <CalorieHistoryChart days={calorieDays} />
+          <div className="flex items-center gap-3 text-[10px] text-white/25 mt-3">
+            <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-lime-500 inline-block" />Under</span>
+            <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-red-400 inline-block" />Over</span>
+          </div>
+        </div>
+
+        {/* Macro trend */}
+        <div className="rounded-2xl p-4" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}>
+          <p className="text-white/30 text-[11px] uppercase tracking-widest font-semibold mb-4">Macro Trends · 30 days</p>
+          <MacroTrendChart days={30} />
         </div>
 
         {/* Milestones */}
