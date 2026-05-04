@@ -55,6 +55,7 @@ profileRoutes.put('/', async (req, res) => {
     const {
       name, age, height_cm, current_weight_kg, goal_weight_kg,
       sex, activity_level, goal_type, dietary_preferences, allergies, weekly_rate_kg,
+      macro_protein_pct, macro_carbs_pct, macro_fat_pct,
     } = req.body
 
     const { rows } = await query('SELECT * FROM profiles WHERE user_id = $1', [req.user.userId])
@@ -72,6 +73,9 @@ profileRoutes.put('/', async (req, res) => {
       dietaryPreferences: dietary_preferences ?? cur.dietary_preferences ?? [],
       allergies: allergies ?? cur.allergies ?? [],
       weeklyRateKg: weekly_rate_kg ?? cur.weekly_rate_kg ?? 0.5,
+      macroProteinPct: macro_protein_pct ?? cur.macro_protein_pct ?? 30,
+      macroCarbsPct: macro_carbs_pct ?? cur.macro_carbs_pct ?? 40,
+      macroFatPct: macro_fat_pct ?? cur.macro_fat_pct ?? 30,
     }
     const target = calcTarget(merged)
 
@@ -79,12 +83,14 @@ profileRoutes.put('/', async (req, res) => {
       `UPDATE profiles SET
          age=$1, height_cm=$2, current_weight_kg=$3, goal_weight_kg=$4,
          daily_calorie_target=$5, sex=$6, activity_level=$7, goal_type=$8,
-         dietary_preferences=$9, allergies=$10, weekly_rate_kg=$11
-       WHERE user_id=$12`,
+         dietary_preferences=$9, allergies=$10, weekly_rate_kg=$11,
+         macro_protein_pct=$12, macro_carbs_pct=$13, macro_fat_pct=$14
+       WHERE user_id=$15`,
       [
         merged.age, merged.heightCm, merged.weightKg, merged.goalWeightKg,
         target, merged.sex, merged.activityLevel, merged.goalType,
         merged.dietaryPreferences, merged.allergies, merged.weeklyRateKg,
+        merged.macroProteinPct, merged.macroCarbsPct, merged.macroFatPct,
         req.user.userId,
       ]
     )

@@ -126,6 +126,9 @@ export function AppProvider({ children }) {
         dietaryPreferences: prof.dietary_preferences ?? [],
         allergies: prof.allergies ?? [],
         role: prof.role ?? 'user',
+        macroProteinPct: prof.macro_protein_pct ?? 30,
+        macroCarbsPct: prof.macro_carbs_pct ?? 40,
+        macroFatPct: prof.macro_fat_pct ?? 30,
       })
       setTodayLog({
         foodEntries: log.foodEntries,
@@ -346,6 +349,9 @@ export function AppProvider({ children }) {
       if (data.dietaryPreferences !== undefined) payload.dietary_preferences = data.dietaryPreferences
       if (data.allergies !== undefined) payload.allergies = data.allergies
       if (data.weeklyRateKg !== undefined) payload.weekly_rate_kg = data.weeklyRateKg
+      if (data.macroProteinPct !== undefined) payload.macro_protein_pct = data.macroProteinPct
+      if (data.macroCarbsPct !== undefined) payload.macro_carbs_pct = data.macroCarbsPct
+      if (data.macroFatPct !== undefined) payload.macro_fat_pct = data.macroFatPct
       const result = await api.put('/api/profile', payload)
       setProfile(prev => ({ ...prev, ...data, dailyCalorieTarget: result.daily_calorie_target }))
     } catch (err) {

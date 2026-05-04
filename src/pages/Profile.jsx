@@ -1,9 +1,12 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Trash2, Save, LogOut } from 'lucide-react'
+import { Trash2, Save, LogOut, Sun, Moon, ChevronRight } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 import { PageTransition } from '../components/ui/PageTransition'
 import { useApp } from '../context/AppContext'
+import { useTheme } from '../context/ThemeContext'
 import { Spinner } from '../components/ui/Spinner'
+import { NotificationSettings } from '../components/ui/NotificationSettings'
 
 const ACTIVITY_LEVELS = [
   { id: 'sedentary', label: 'Sedentary',  hint: 'Desk job, little exercise',     mult: 1.2 },
@@ -101,6 +104,8 @@ function Chip({ active, onClick, children }) {
 
 export default function Profile() {
   const { profile, updateProfile, resetData, logout, bmi } = useApp()
+  const { theme, toggleTheme } = useTheme()
+  const navigate = useNavigate()
   const [form, setForm] = useState({
     name: profile?.name ?? '',
     age: profile?.age ?? 22,
@@ -113,6 +118,9 @@ export default function Profile() {
     weeklyRateKg: profile?.weeklyRateKg ?? 0.5,
     dietaryPreferences: profile?.dietaryPreferences ?? [],
     allergies: profile?.allergies ?? [],
+    macroProteinPct: profile?.macroProteinPct ?? 30,
+    macroCarbsPct: profile?.macroCarbsPct ?? 40,
+    macroFatPct: profile?.macroFatPct ?? 30,
   })
   const [allergyInput, setAllergyInput] = useState('')
   const [saving, setSaving] = useState(false)
@@ -159,6 +167,9 @@ export default function Profile() {
         weeklyRateKg: form.weeklyRateKg,
         dietaryPreferences: form.dietaryPreferences,
         allergies: form.allergies,
+        macroProteinPct: form.macroProteinPct,
+        macroCarbsPct: form.macroCarbsPct,
+        macroFatPct: form.macroFatPct,
       })
       setSaved(true)
       setTimeout(() => setSaved(false), 2500)
@@ -186,7 +197,7 @@ export default function Profile() {
             style={{ background: 'linear-gradient(135deg, #d97706, #fbbf24)' }}>
             {profile?.name?.[0]?.toUpperCase() ?? 'A'}
           </div>
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             <h2 className="font-display font-bold text-xl text-white truncate">{profile?.name}</h2>
             <p className="text-white/35 text-sm">{profile?.email}</p>
             <div className="flex items-center gap-2 mt-1.5">
@@ -196,6 +207,16 @@ export default function Profile() {
               </span>
             </div>
           </div>
+          <motion.button
+            whileTap={{ scale: 0.9 }}
+            onClick={toggleTheme}
+            className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
+            style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.1)' }}
+            title="Toggle theme">
+            {theme === 'dark'
+              ? <Sun size={16} className="text-gold-400" />
+              : <Moon size={16} className="text-white/60" />}
+          </motion.button>
         </div>
 
         {/* Calorie target */}
@@ -293,6 +314,57 @@ export default function Profile() {
           </motion.button>
         </div>
 
+        {/* Macro goals */}
+        <div className="rounded-2xl p-5" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}>
+          <p className="text-white/35 text-[11px] uppercase tracking-widest font-semibold mb-4">Macro Split</p>
+          {[
+            { key: 'macroProteinPct', label: 'Protein', color: '#84cc16', calsPerG: 4 },
+            { key: 'macroCarbsPct',   label: 'Carbs',   color: '#fbbf24', calsPerG: 4 },
+            { key: 'macroFatPct',     label: 'Fat',     color: '#f87171', calsPerG: 9 },
+          ].map(({ key, label, color, calsPerG }) => {
+            const pct = form[key] ?? 30
+            const grams = Math.round(liveCalTarget * (pct / 100) / calsPerG)
+            return (
+              <div key={key} className="mb-4 last:mb-0">
+                <div className="flex justify-between items-center mb-1.5">
+                  <span className="text-xs font-semibold" style={{ color }}>{label}</span>
+                  <span className="text-white/50 text-xs">{pct}% · {grams}g</span>
+                </div>
+                <input
+                  type="range" min="10" max="60" step="5" value={pct}
+                  onChange={e => {
+                    const val = parseInt(e.target.value)
+                    const others = ['macroProteinPct', 'macroCarbsPct', 'macroFatPct'].filter(k => k !== key)
+                    const remaining = 100 - val
+                    const otherSum = others.reduce((s, k) => s + (form[k] ?? 30), 0)
+                    if (otherSum === 0) return
+                    setForm(f => ({
+                      ...f,
+                      [key]: val,
+                      [others[0]]: Math.round((f[others[0]] / otherSum) * remaining),
+                      [others[1]]: remaining - Math.round((f[others[0]] / otherSum) * remaining),
+                    }))
+                  }}
+                  className="w-full"
+                  style={{ accentColor: color }}
+                />
+              </div>
+            )
+          })}
+          <div className="flex rounded-lg overflow-hidden mt-2" style={{ height: 8 }}>
+            {[
+              { key: 'macroProteinPct', color: '#84cc16' },
+              { key: 'macroCarbsPct',   color: '#fbbf24' },
+              { key: 'macroFatPct',     color: '#f87171' },
+            ].map(({ key, color }) => (
+              <div key={key} style={{ width: `${form[key] ?? 30}%`, background: color, transition: 'width 0.2s' }} />
+            ))}
+          </div>
+          <p className="text-white/25 text-[10px] mt-2 text-right">
+            Total: {(form.macroProteinPct ?? 30) + (form.macroCarbsPct ?? 40) + (form.macroFatPct ?? 30)}%
+          </p>
+        </div>
+
         {/* Dietary preferences */}
         <div className="rounded-2xl p-5" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}>
           <p className="text-white/35 text-[11px] uppercase tracking-widest font-semibold mb-3">Dietary patterns</p>
@@ -337,6 +409,32 @@ export default function Profile() {
           ) : (
             <p className="text-white/30 text-xs">None added yet.</p>
           )}
+        </div>
+
+        {/* Notifications */}
+        <NotificationSettings />
+
+        {/* Explore */}
+        <div className="rounded-2xl p-4 flex flex-col gap-1" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}>
+          <p className="text-white/35 text-[11px] uppercase tracking-widest font-semibold mb-2">Explore</p>
+          {[
+            { path: '/habits',       emoji: '✅', label: 'Daily Habits',    sub: 'Track your daily routines' },
+            { path: '/workouts',     emoji: '💪', label: 'Workout Plans',   sub: 'Structured fitness programs' },
+            { path: '/achievements', emoji: '🏆', label: 'Achievements',    sub: 'Your fitness milestones' },
+          ].map(({ path, emoji, label, sub }) => (
+            <motion.button
+              key={path}
+              whileTap={{ scale: 0.97 }}
+              onClick={() => navigate(path)}
+              className="flex items-center gap-3 py-2.5 px-1 rounded-xl text-left w-full">
+              <span className="text-xl">{emoji}</span>
+              <div className="flex-1">
+                <p className="text-white text-sm font-semibold">{label}</p>
+                <p className="text-white/30 text-xs">{sub}</p>
+              </div>
+              <ChevronRight size={15} className="text-white/20" />
+            </motion.button>
+          ))}
         </div>
 
         {/* Account actions */}

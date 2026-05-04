@@ -8,6 +8,9 @@ import { logsRoutes } from './routes/logs.js'
 import { weightRoutes } from './routes/weight.js'
 import { exerciseRoutes } from './routes/exercise.js'
 import { adminRoutes } from './routes/admin.js'
+import { measurementsRoutes } from './routes/measurements.js'
+import { sleepRoutes } from './routes/sleep.js'
+import { habitsRoutes } from './routes/habits.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const app = express()
@@ -32,6 +35,9 @@ app.use('/api/logs', logsRoutes)
 app.use('/api/weight', weightRoutes)
 app.use('/api/exercise', exerciseRoutes)
 app.use('/api/admin', adminRoutes)
+app.use('/api/measurements', measurementsRoutes)
+app.use('/api/sleep', sleepRoutes)
+app.use('/api/habits', habitsRoutes)
 
 app.get('/api/health', (_, res) => res.json({ ok: true, ts: new Date().toISOString() }))
 
