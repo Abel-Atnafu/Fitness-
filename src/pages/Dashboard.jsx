@@ -3,6 +3,7 @@ import { getHours } from 'date-fns'
 import { PageTransition } from '../components/ui/PageTransition'
 import { CalorieRing } from '../components/dashboard/CalorieRing'
 import { StreakCard } from '../components/dashboard/StreakCard'
+import { MacroBars } from '../components/dashboard/MacroBars'
 import { QuickStats } from '../components/dashboard/QuickStats'
 import { MotivationalQuote } from '../components/dashboard/MotivationalQuote'
 import { WeeklySummary } from '../components/dashboard/WeeklySummary'
@@ -15,7 +16,7 @@ function getGreeting() {
 }
 
 export default function Dashboard() {
-  const { profile, weightEntries } = useApp()
+  const { profile, weightEntries, currentStreak, longestStreak, waterStreak, weightStreak } = useApp()
   const name = profile?.name?.split(' ')[0] ?? 'there'
   const greeting = getGreeting()
   const startWeight = weightEntries[0]?.weight ?? profile?.currentWeightKg ?? 95
@@ -80,23 +81,50 @@ export default function Dashboard() {
             style={{ background: 'linear-gradient(90deg, transparent, rgba(251,191,36,0.35), transparent)' }} />
           <p className="text-center text-white/30 text-[11px] uppercase tracking-widest font-semibold mb-5">Daily Calories</p>
           <CalorieRing />
+          <MacroBars />
         </motion.div>
 
-        {/* Streak + Current Weight */}
+        {/* Streaks */}
         <div className="flex gap-3">
-          <StreakCard />
-          <motion.div
-            whileHover={{ scale: 1.02 }}
-            className="flex-1 rounded-2xl p-4 relative overflow-hidden"
-            style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}>
-            <p className="text-white/35 text-[10px] uppercase tracking-widest font-semibold mb-1.5">Weight</p>
-            <div className="flex items-baseline gap-1">
-              <span className="font-display font-black text-3xl text-white">{currentWeight}</span>
-              <span className="text-white/40 text-sm font-medium">kg</span>
-            </div>
-            <p className="text-white/25 text-xs mt-1">Goal: {profile?.goalWeightKg ?? 80} kg</p>
-          </motion.div>
+          <StreakCard
+            label="Streak"
+            value={currentStreak}
+            best={longestStreak}
+            activeEmoji="🔥"
+            accent="rgba(251,191,36,0.5)"
+          />
+          <StreakCard
+            label="Water"
+            value={waterStreak}
+            unit="days"
+            activeEmoji="💧"
+            idleEmoji="🚱"
+            accent="rgba(56,189,248,0.5)"
+            hint={waterStreak === 0 ? 'Hit 8 glasses to start' : 'Hydration on point'}
+          />
+          <StreakCard
+            label="Weigh-in"
+            value={weightStreak}
+            unit="days"
+            activeEmoji="⚖️"
+            idleEmoji="⚖️"
+            accent="rgba(132,204,22,0.5)"
+            hint={weightStreak === 0 ? 'Log your weight' : 'Consistency wins'}
+          />
         </div>
+
+        {/* Current Weight */}
+        <motion.div
+          whileHover={{ scale: 1.01 }}
+          className="rounded-2xl p-4 relative overflow-hidden"
+          style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}>
+          <p className="text-white/35 text-[10px] uppercase tracking-widest font-semibold mb-1.5">Weight</p>
+          <div className="flex items-baseline gap-1">
+            <span className="font-display font-black text-3xl text-white">{currentWeight}</span>
+            <span className="text-white/40 text-sm font-medium">kg</span>
+          </div>
+          <p className="text-white/25 text-xs mt-1">Goal: {profile?.goalWeightKg ?? 80} kg</p>
+        </motion.div>
 
         {/* Quick stats */}
         <QuickStats />

@@ -7,12 +7,43 @@ logsRoutes.use(authenticate)
 
 logsRoutes.get('/', async (req, res) => {
   const { userId } = req.user
-  const days = Math.min(parseInt(req.query.days) || 7, 90)
+  const days = Math.min(parseInt(req.query.days) || 7, 365)
   try {
     const { rows } = await query(
-      `SELECT date, COALESCE(SUM(calories), 0)::integer as "totalCalories"
-       FROM food_entries WHERE user_id=$1
-       GROUP BY date ORDER BY date DESC LIMIT $2`,
+      `WITH food AS (
+         SELECT date,
+                COALESCE(SUM(calories), 0)::integer AS total_calories,
+                COALESCE(SUM(protein), 0)::real     AS total_protein,
+                COALESCE(SUM(carbs), 0)::real       AS total_carbs,
+                COALESCE(SUM(fat), 0)::real         AS total_fat
+         FROM food_entries WHERE user_id=$1
+         GROUP BY date
+       ),
+       water AS (
+         SELECT date, glasses FROM water_logs WHERE user_id=$1
+       ),
+       meals AS (
+         SELECT date, COUNT(*)::integer AS meals_completed
+         FROM meals_eaten WHERE user_id=$1 AND eaten=1
+         GROUP BY date
+       ),
+       all_dates AS (
+         SELECT date FROM food
+         UNION SELECT date FROM water
+         UNION SELECT date FROM meals
+       )
+       SELECT a.date,
+              COALESCE(food.total_calories, 0)::integer AS "totalCalories",
+              COALESCE(food.total_protein, 0)::real     AS "totalProtein",
+              COALESCE(food.total_carbs, 0)::real       AS "totalCarbs",
+              COALESCE(food.total_fat, 0)::real         AS "totalFat",
+              COALESCE(water.glasses, 0)::integer       AS "waterGlasses",
+              COALESCE(meals.meals_completed, 0)::integer AS "mealsCompleted"
+       FROM all_dates a
+       LEFT JOIN food  ON food.date  = a.date
+       LEFT JOIN water ON water.date = a.date
+       LEFT JOIN meals ON meals.date = a.date
+       ORDER BY a.date DESC LIMIT $2`,
       [userId, days]
     )
     res.json(rows)

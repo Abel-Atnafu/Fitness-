@@ -49,6 +49,47 @@ function calcStreak(history) {
   return streak
 }
 
+function calcLongestStreak(history) {
+  if (!history.length) return 0
+  const dates = history.filter(h => h.totalCalories > 0).map(h => h.date).sort()
+  let longest = 0, current = 0, prev = null
+  for (const date of dates) {
+    if (prev) {
+      const gap = (new Date(date) - new Date(prev)) / 86400000
+      current = gap === 1 ? current + 1 : 1
+    } else {
+      current = 1
+    }
+    if (current > longest) longest = current
+    prev = date
+  }
+  return longest
+}
+
+function calcWaterStreak(history, target = 8) {
+  const map = Object.fromEntries(history.map(h => [h.date, h.waterGlasses ?? 0]))
+  let streak = 0
+  for (let i = 1; i <= 365; i++) {
+    const d = new Date()
+    d.setDate(d.getDate() - i)
+    if ((map[format(d, 'yyyy-MM-dd')] ?? 0) >= target) streak++
+    else break
+  }
+  return streak
+}
+
+function calcWeightStreak(weightEntries) {
+  const set = new Set(weightEntries.map(e => e.date))
+  let streak = 0
+  for (let i = 0; i <= 365; i++) {
+    const d = new Date()
+    d.setDate(d.getDate() - i)
+    if (set.has(format(d, 'yyyy-MM-dd'))) streak++
+    else if (i > 0) break
+  }
+  return streak
+}
+
 export function AppProvider({ children }) {
   const [token, setToken] = useState(() => localStorage.getItem('fitethio-token'))
   const [user, setUser] = useState(null)
@@ -108,7 +149,7 @@ export function AppProvider({ children }) {
         api.get('/api/profile'),
         api.get(`/api/logs/${todayKey}`),
         api.get('/api/weight'),
-        api.get('/api/logs?days=30'),
+        api.get('/api/logs?days=90'),
         api.get(`/api/exercise?date=${todayKey}`),
       ])
       setProfile({
@@ -221,10 +262,18 @@ export function AppProvider({ children }) {
       // Bug 6 fix: update recentHistory for today and recalculate streak
       setRecentHistory(prev => {
         const existing = prev.find(h => h.date === todayKey)
-        const newCalories = (existing?.totalCalories ?? 0) + (entry.calories ?? 0)
+        const patched = {
+          date: todayKey,
+          totalCalories: (existing?.totalCalories ?? 0) + (entry.calories ?? 0),
+          totalProtein: (existing?.totalProtein ?? 0) + (entry.protein ?? 0),
+          totalCarbs: (existing?.totalCarbs ?? 0) + (entry.carbs ?? 0),
+          totalFat: (existing?.totalFat ?? 0) + (entry.fat ?? 0),
+          waterGlasses: existing?.waterGlasses ?? 0,
+          mealsCompleted: existing?.mealsCompleted ?? 0,
+        }
         const updated = existing
-          ? prev.map(h => h.date === todayKey ? { ...h, totalCalories: newCalories } : h)
-          : [...prev, { date: todayKey, totalCalories: newCalories }]
+          ? prev.map(h => h.date === todayKey ? patched : h)
+          : [...prev, patched]
         setCurrentStreak(calcStreak(updated))
         return updated
       })
@@ -245,7 +294,13 @@ export function AppProvider({ children }) {
         setRecentHistory(prev => {
           const updated = prev.map(h =>
             h.date === todayKey
-              ? { ...h, totalCalories: Math.max(0, h.totalCalories - (removed.calories ?? 0)) }
+              ? {
+                  ...h,
+                  totalCalories: Math.max(0, (h.totalCalories ?? 0) - (removed.calories ?? 0)),
+                  totalProtein: Math.max(0, (h.totalProtein ?? 0) - (removed.protein ?? 0)),
+                  totalCarbs: Math.max(0, (h.totalCarbs ?? 0) - (removed.carbs ?? 0)),
+                  totalFat: Math.max(0, (h.totalFat ?? 0) - (removed.fat ?? 0)),
+                }
               : h
           )
           setCurrentStreak(calcStreak(updated))
@@ -378,6 +433,24 @@ export function AppProvider({ children }) {
   const mealsCompletedToday = Object.values(todayLog.mealsEaten ?? {}).filter(Boolean).length
   const isAdmin = profile?.role === 'admin'
 
+  const macroTotals = todayLog.foodEntries.reduce(
+    (s, e) => ({
+      protein: s.protein + (e.protein ?? 0),
+      carbs: s.carbs + (e.carbs ?? 0),
+      fat: s.fat + (e.fat ?? 0),
+    }),
+    { protein: 0, carbs: 0, fat: 0 }
+  )
+  const calorieTarget = profile?.dailyCalorieTarget ?? 1900
+  const macroTargets = {
+    protein: Math.round((calorieTarget * 0.30) / 4),
+    carbs: Math.round((calorieTarget * 0.40) / 4),
+    fat: Math.round((calorieTarget * 0.30) / 9),
+  }
+  const longestStreak = calcLongestStreak(recentHistory)
+  const waterStreak = calcWaterStreak(recentHistory)
+  const weightStreak = calcWeightStreak(weightEntries)
+
   return (
     <AppContext.Provider value={{
       token, user, login, register, forgotPassword, resetPassword, logout, authLoading,
@@ -388,6 +461,7 @@ export function AppProvider({ children }) {
       activeMealPlanDay, setActiveMealPlanDay, mealSwapIndices, weekBaseIndices, swapMeal,
       loading, error, setError, todayKey,
       todayCalories, todayCaloriesBurned, calorieDeficit, bmi, mealsCompletedToday, isAdmin,
+      macroTotals, macroTargets, longestStreak, waterStreak, weightStreak,
     }}>
       {children}
     </AppContext.Provider>

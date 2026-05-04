@@ -13,16 +13,17 @@ function Tip({ active, payload, label }) {
   )
 }
 
-export function CalorieHistoryChart() {
+export function CalorieHistoryChart({ days = 7 }) {
   const { recentHistory, profile } = useApp()
   const target = profile?.dailyCalorieTarget ?? 1900
 
   const historyMap = Object.fromEntries(recentHistory.map(h => [h.date, h.totalCalories]))
 
-  const data = Array.from({ length: 7 }, (_, i) => {
-    const d = subDays(new Date(), 6 - i)
+  const labelFmt = days <= 7 ? 'EEE' : days <= 30 ? 'd' : 'MMM d'
+  const data = Array.from({ length: days }, (_, i) => {
+    const d = subDays(new Date(), days - 1 - i)
     const key = format(d, 'yyyy-MM-dd')
-    return { date: format(d, 'EEE'), calories: historyMap[key] ?? 0 }
+    return { date: format(d, labelFmt), calories: historyMap[key] ?? 0 }
   })
 
   const hasData = data.some(d => d.calories > 0)
@@ -38,9 +39,10 @@ export function CalorieHistoryChart() {
 
   return (
     <ResponsiveContainer width="100%" height={150}>
-      <BarChart data={data} margin={{ top: 6, right: 6, left: -22, bottom: 0 }} barSize={26}>
+      <BarChart data={data} margin={{ top: 6, right: 6, left: -22, bottom: 0 }} barSize={Math.max(4, Math.min(26, Math.floor(180 / data.length)))}>
         <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" vertical={false} />
-        <XAxis dataKey="date" tick={{ fill: 'rgba(255,255,255,0.3)', fontSize: 10 }} axisLine={false} tickLine={false} />
+        <XAxis dataKey="date" tick={{ fill: 'rgba(255,255,255,0.3)', fontSize: 10 }} axisLine={false} tickLine={false}
+          interval={data.length <= 7 ? 0 : data.length <= 30 ? 4 : 13} />
         <YAxis tick={{ fill: 'rgba(255,255,255,0.3)', fontSize: 10 }} axisLine={false} tickLine={false} />
         <Tooltip content={<Tip />} />
         <ReferenceLine y={target} stroke="rgba(251,191,36,0.45)" strokeDasharray="5 3" strokeWidth={1.5} />
