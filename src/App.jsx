@@ -1,11 +1,13 @@
 import { HashRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { AnimatePresence } from 'framer-motion'
 import { AppProvider, useApp } from './context/AppContext'
+import { ThemeProvider } from './context/ThemeContext'
 import { Navbar } from './components/layout/Navbar'
 import { BottomNav } from './components/layout/BottomNav'
 import { LoadingScreen } from './components/ui/Spinner'
 import { ErrorBanner } from './components/ui/ErrorBanner'
 import { OnboardingWizard } from './components/ui/OnboardingWizard'
+import { InstallPrompt } from './components/ui/InstallPrompt'
 import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
 import MealPlan from './pages/MealPlan'
@@ -13,6 +15,9 @@ import FoodLog from './pages/FoodLog'
 import Progress from './pages/Progress'
 import Profile from './pages/Profile'
 import Admin from './pages/Admin'
+import Habits from './pages/Habits'
+import Workouts from './pages/Workouts'
+import Achievements from './pages/Achievements'
 
 function AnimatedRoutes() {
   const location = useLocation()
@@ -24,6 +29,9 @@ function AnimatedRoutes() {
         <Route path="/log" element={<FoodLog />} />
         <Route path="/progress" element={<Progress />} />
         <Route path="/profile" element={<Profile />} />
+        <Route path="/habits" element={<Habits />} />
+        <Route path="/workouts" element={<Workouts />} />
+        <Route path="/achievements" element={<Achievements />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </AnimatePresence>
@@ -53,6 +61,7 @@ function AppShell() {
       </div>
       {profile && profile.sex === null && <OnboardingWizard />}
       <ErrorBanner />
+      <InstallPrompt />
       <Navbar />
       <main className="relative z-10 pt-14 pb-20 px-4 max-w-[448px] mx-auto">
         <AnimatedRoutes />
@@ -64,13 +73,15 @@ function AppShell() {
 
 export default function App() {
   return (
-    <AppProvider>
-      <HashRouter>
-        <Routes>
-          <Route path="/admin" element={<AdminRoute />} />
-          <Route path="*" element={<AppShell />} />
-        </Routes>
-      </HashRouter>
-    </AppProvider>
+    <ThemeProvider>
+      <AppProvider>
+        <HashRouter>
+          <Routes>
+            <Route path="/admin" element={<AdminRoute />} />
+            <Route path="*" element={<AppShell />} />
+          </Routes>
+        </HashRouter>
+      </AppProvider>
+    </ThemeProvider>
   )
 }

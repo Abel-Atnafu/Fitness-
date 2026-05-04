@@ -125,6 +125,48 @@ export async function initDb() {
       emoji TEXT DEFAULT '🏃',
       logged_at TIMESTAMPTZ DEFAULT NOW()
     )`,
+    `CREATE TABLE IF NOT EXISTS body_measurements (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      date TEXT NOT NULL,
+      weight_kg REAL,
+      chest_cm REAL,
+      waist_cm REAL,
+      hips_cm REAL,
+      arms_cm REAL,
+      thighs_cm REAL,
+      neck_cm REAL,
+      logged_at TIMESTAMPTZ DEFAULT NOW(),
+      UNIQUE(user_id, date)
+    )`,
+    `CREATE TABLE IF NOT EXISTS sleep_entries (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      date TEXT NOT NULL,
+      hours REAL NOT NULL,
+      quality INTEGER DEFAULT 3,
+      notes TEXT DEFAULT '',
+      logged_at TIMESTAMPTZ DEFAULT NOW(),
+      UNIQUE(user_id, date)
+    )`,
+    `CREATE TABLE IF NOT EXISTS habits (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      name TEXT NOT NULL,
+      emoji TEXT DEFAULT '⭐',
+      color TEXT DEFAULT '#fbbf24',
+      created_at TIMESTAMPTZ DEFAULT NOW()
+    )`,
+    `CREATE TABLE IF NOT EXISTS habit_completions (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      habit_id INTEGER NOT NULL REFERENCES habits(id) ON DELETE CASCADE,
+      date TEXT NOT NULL,
+      UNIQUE(user_id, habit_id, date)
+    )`,
+    `ALTER TABLE profiles ADD COLUMN IF NOT EXISTS macro_protein_pct INTEGER DEFAULT 30`,
+    `ALTER TABLE profiles ADD COLUMN IF NOT EXISTS macro_carbs_pct INTEGER DEFAULT 40`,
+    `ALTER TABLE profiles ADD COLUMN IF NOT EXISTS macro_fat_pct INTEGER DEFAULT 30`,
   ]
   for (const stmt of stmts) {
     await fn(stmt, [])
